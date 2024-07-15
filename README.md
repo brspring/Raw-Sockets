@@ -7,3 +7,5 @@ O servidor e o cliente devem executar em máquinas distintas, conectadas por um 
 
 Uma vez conectados e iniciados cliente e servidor, no cliente é mostrada uma lista de títulos de vídeos disponíveis no servidor, em mp4 e/ou avi. Vocês terão que definir como é selecionado o
 diretório para isto. O usuário, no cliente, pode escolher um dos vídeos, a partir da escolha o vídeo é transferido para o cliente. Após a transferência o cliente chama um player para a exibição iniciar.
+
+![image](https://github.com/user-attachments/assets/a332f89f-e080-4c7d-ab9f-3d1e37e58321)
