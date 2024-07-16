@@ -11,10 +11,10 @@ all: $(TARGETS)
 API-raw-socket.o: API-raw-socket.c API-raw-socket.h
 	$(CC) $(CFLAGS) -c API-raw-socket.c -o API-raw-socket.o
 
-cliente: cliente.c $(OBJS)
+cliente: cliente.c $(OBJS) frame.h
 	$(CC) $(CFLAGS) cliente.c $(OBJS) -o cliente
 
-servidor: servidor.c $(OBJS)
+servidor: servidor.c $(OBJS) frame.h
 	$(CC) $(CFLAGS) servidor.c $(OBJS) -o servidor
 
 clean:
