@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -std=c99
 SRCS = API-raw-socket.c
 OBJS = API-raw-socket.o
 TARGETS = cliente servidor

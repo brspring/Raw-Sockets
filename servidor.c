@@ -15,6 +15,12 @@ int main() {
     Frame frame;
 
     memset(&frame, 0, sizeof(frame));
+    
+    if( listen(soquete, 1) == -1){
+        perror("Erro ao escutar");
+        exit(-1);
+    }
+
     ssize_t num_bytes = recv(soquete, &frame, sizeof(frame), 0); //recv() recebe a mensagem do cliente
 
     if (num_bytes == -1) {
@@ -22,7 +28,14 @@ int main() {
         exit(-1);
     }
 
-    printf("Servidor recebeu: %s\n", frame.data);
+    printf("Servidor recebeu: \n");
+    printf("  Marcador de Início: 0x%02X\n", frame.marcador_inicio);
+    printf("  Tamanho: %u\n", frame.tamanho);
+    printf("  Sequência: %u\n", frame.sequencia);
+    printf("  Tipo: 0x%02X\n", frame.tipo);
+    printf("  Dados: %s\n", frame.data); 
+    printf("  CRC: 0x%02X\n", frame.crc);
+
     close(soquete);  // diz que a operacao terminou ver na imagem
     return 0;
 }
