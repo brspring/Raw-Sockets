@@ -42,22 +42,29 @@ int main(int argc, char **argv) {
     10010 dados
     11110 fim tx
     11111 erro
-    VER COMO EU FACO PRA RECEBER O TIPO DA MENSAGEM
-    if(strcmp(tipo, "00000") == 0)]
-    }else if(strcmp(tipo, "00001") == 0){
-        init_frame(&frame, 0, TIPO_NACK);
-    }else if(strcmp(tipo, "01010") == 0){
-        init_frame(&frame, 0, TIPO_LISTA);
-    }else if(strcmp(tipo, "01011") == 0){
-        init_frame(&frame, 0, TIPO_BAIXAR);
-    }else if(strcmp(tipo, "10000") == 0){
-        init_frame(&frame, 0, TIPO_MOSTRA_NA_TELA);
-    }else if(strcmp(tipo, "10001") == 0){
-        init_frame(&frame, 0, TIPO_DESCRITOR_ARQUIVO);
-    }*/
+    */
     char *tipo = argv[1];
     if(strcmp(tipo, "00000") == 0){
         init_frame(&frame, 0, TIPO_ACK);
+    } else if (strcmp(tipo, "00001") == 0) {
+        init_frame(&frame, 0, TIPO_NACK);
+    } else if (strcmp(tipo, "01010") == 0) {
+        init_frame(&frame, 0, TIPO_LISTA);
+    } else if (strcmp(tipo, "01011") == 0) {
+        init_frame(&frame, 0, TIPO_BAIXAR);
+    } else if (strcmp(tipo, "10000") == 0) {
+        init_frame(&frame, 0, TIPO_MOSTRA_NA_TELA);
+    } else if (strcmp(tipo, "10001") == 0) {
+        init_frame(&frame, 0, TIPO_DESCRITOR_ARQUIVO);
+    } else if (strcmp(tipo, "10010") == 0) {
+        init_frame(&frame, 0, TIPO_DADOS);
+    } else if (strcmp(tipo, "11110") == 0) {
+        init_frame(&frame, 0, TIPO_FIM_TX);
+    } else if (strcmp(tipo, "11111") == 0) {
+        init_frame(&frame, 0, TIPO_ERRO);
+    } else {
+        fprintf(stderr, "Tipo de mensagem inválido\n");
+        exit(-1);
     }
 
     strcpy(frame.data, "Oieeer");
