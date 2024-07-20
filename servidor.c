@@ -1,10 +1,10 @@
-#include <stdio.h>          
-#include <stdlib.h>         
-#include <string.h>         
-#include <unistd.h>         
-#include <arpa/inet.h>      
-#include <net/ethernet.h>   
-#include <net/if.h>         
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <net/ethernet.h>
+#include <net/if.h>
 #include <linux/if_packet.h>
 #include <dirent.h>
 
@@ -25,7 +25,7 @@ void lista_arquivos(const char *diretorio) {
 
     printf("Filmes disponiveis '%s':\n", diretorio);
     while ((entry = readdir(dir)) != NULL) {
-        
+
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0){
             printf("%s\n", entry->d_name);
         }
@@ -38,7 +38,7 @@ int main() {
     const char *diretorio = "./filmes";
 
     int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
-    Frame frame;
+    frame_t frame;
 
     memset(&frame, 0, sizeof(frame));
 
@@ -58,7 +58,7 @@ int main() {
             printf("NACK\n");
             break;
         case TIPO_LISTA:
-        // ver melhor essa funcao 
+        // ver melhor essa funcao
             lista_arquivos(diretorio);
             break;
         case TIPO_BAIXAR:
@@ -86,7 +86,7 @@ int main() {
     printf("  Tamanho: %u\n", frame.tamanho);
     printf("  Sequência: %u\n", frame.sequencia);
     printf("  Tipo: 0x%02X\n", frame.tipo);
-    printf("  Dados: %s\n", frame.data); 
+    printf("  Dados: %s\n", frame.data);
     printf("  CRC: 0x%02X\n", frame.crc);
 
     close(soquete);  // diz que a operacao terminou ver na imagem
