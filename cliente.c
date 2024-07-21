@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
     printf("  Tipo: 0x%02X\n", frame.tipo);
     printf("  Dados: %s\n", frame.data);
     printf("  CRC: 0x%02X\n", frame.crc);
+    
     close(soquete); //diz que a operacao terminou ver na imagem
     return 0;
 }

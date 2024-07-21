@@ -13,7 +13,7 @@
 #define TIPO_FIM_TX 0x1E
 #define TIPO_ERRO 0x1F
 
-#define MAX_DATA_SIZE 504  // 63 bytes
+#define MAX_DATA_SIZE 63  // 63 bytes
 #define BIT_INICIO 0x7E
 
 struct frame {
