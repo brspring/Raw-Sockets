@@ -14,14 +14,20 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-
+void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
+        frame->marcador_inicio = BIT_INICIO;
+        frame->sequencia = sequencia;
+        frame->tipo = tipo;
+        frame->tamanho = strlen(frame->data);
+        frame->crc = 0;
+}
 
 // essa funcao so lista os arquivos, n sei como passa eles pelo frame kk
 void lista_arquivos(const char *diretorio, frame_t *frame) {
     DIR *dir;
     struct dirent *entry;
     char *leitura_pos;
-    unsigned long int bytes_lidos = 1; // inicio com 1 pq coloco o \0 no fim 
+    unsigned long int bytes_lidos = 1; // inicio com 1 pq coloco o \0 no fim
     char *escrita_pos;
     escrita_pos = frame->data;
     dir = opendir(diretorio);
@@ -36,7 +42,7 @@ void lista_arquivos(const char *diretorio, frame_t *frame) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0){
             leitura_pos = entry->d_name;
             unsigned int tam_nome = strlen(entry->d_name);
-            
+
             int i = 0;
             while(i < tam_nome){ // enqt não enviou o nome do filme que está
                 if(bytes_lidos + tam_nome + 1 <= MAX_DATA_SIZE){ // se cabe tudo
@@ -47,7 +53,7 @@ void lista_arquivos(const char *diretorio, frame_t *frame) {
                     bytes_lidos += tam_nome + 1;
                     i = tam_nome;
                     frame->tamanho = bytes_lidos;
-                }  
+                }
                 else { // se não cabe o nome todo
                     strncpy(escrita_pos, leitura_pos, MAX_DATA_SIZE - bytes_lidos - 1); // adiciona o que cabe e não põe \0 no fim pq ainda vai ter q por mais caracteres pro nome desse filme
                     leitura_pos += MAX_DATA_SIZE - bytes_lidos - 1;
@@ -59,7 +65,7 @@ void lista_arquivos(const char *diretorio, frame_t *frame) {
                     bytes_lidos = 1;
                 }
             }
-            
+
         }
     }
     *escrita_pos = '\0';
@@ -70,31 +76,35 @@ void lista_arquivos(const char *diretorio, frame_t *frame) {
     }
 
 int main() {
-    const char *diretorio = "./filmes";
+    // const char *diretorio = "./filmes";
 
     int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
-    frame_t frame;
+    frame_t frameS;
+    frame_t frameR;
 
-    memset(&frame, 0, sizeof(frame));
-
-    ssize_t num_bytes = recv(soquete, &frame, sizeof(frame), 0); //recv() recebe a mensagem do cliente
-
-    if (num_bytes == -1) {
-        perror("Erro ao receber dados");
-        exit(-1);
-    }
+    while(1){
+        if(recv(soquete, &frameR, sizeof(frameR), 0) == -1)
+        {
+                perror("Erro ao receber dados");
+                exit(-1);
+        }
 
     //deve ter algum jeito melhor de identificar o tipo do frame, fiz assim por enquanto
-    switch(frame.tipo){
-        case TIPO_ACK:
+    switch(frameR.tipo){
+        case TIPO_LISTA:
+            recv(soquete, &frameR, sizeof(frameR), 0);
+            printf("servidor recebeu: %s\n", frameR.data);
+                strcpy(frameS.data, "recebi seu oi cliente");
+				set_frame(&frameS, 0, TIPO_LISTA);
+				// lista_arquivos(diretorio, &frameS);
+				printf("servidor enviou: %s\n", frameS.data);
+				send(soquete, &frameS, sizeof(frameS), 0);
+            break;
+        /*case TIPO_ACK:
             printf("ACK\n");
             break;
         case TIPO_NACK:
             printf("NACK\n");
-            break;
-        case TIPO_LISTA:
-        // ver melhor essa funcao
-            lista_arquivos(diretorio, &frame);
             break;
         case TIPO_BAIXAR:
             printf("BAIXAR\n");
@@ -113,9 +123,9 @@ int main() {
             break;
         case TIPO_ERRO:
             printf("ERRO\n");
-            break;
+            break;*/
     }
-
+    /*
     printf("Servidor recebeu: \n");
     printf("  Marcador de Início: 0x%02X\n", frame.marcador_inicio);
     printf("  Tamanho: %u\n", frame.tamanho);
@@ -123,8 +133,9 @@ int main() {
     printf("  Tipo: 0x%02X\n", frame.tipo);
     printf("  Dados: %s\n", frame.data);
     printf("  CRC: 0x%02X\n", frame.crc);
+     */
 
     close(soquete);  // diz que a operacao terminou ver na imagem
     return 0;
+    }
 }
-

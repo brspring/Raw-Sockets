@@ -21,53 +21,46 @@ void init_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
         frame->crc = 0;
 }
 
+void MenuCliente(){
+    printf("Cliente Iniciado\n");
+    printf("Digite seu comando: \n");
+}
+
+void lista(int socket){
+    frame_t frameSend;
+    frame_t frameRecv;
+    init_frame(&frameSend, 0, TIPO_LISTA);
+    strcpy(frameSend.data, "oii");
+    if (send(socket, &frameSend, sizeof(frameSend), 0) == -1)
+        {
+            perror("Erro ao enviar mensagem! \n");
+        }
+        recv(socket, &frameRecv, sizeof(frameRecv), 0);
+        printf(" Cliente recebeu: %s\n", frameRecv.data);
+}
+
 int main(int argc, char **argv) {
-    frame_t frame;
-    char *tipo = argv[1];
+    //frame_t frame;
+    //char *tipo = argv[1];
 
     int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
-
     if (soquete == -1) {
         perror("Erro ao criar socket");
         exit(-1);
     }
-   /* possiveis mensagens =
-    00000 ack
-    00001 nack
-    01010 lista
-    01011 baixar
-    10000 mostra na tela
-    10001 descritor arquivo
-    10010 dados
-    11110 fim tx
-    11111 erro
-    */
-    memset(&frame, 0, sizeof(frame));
-    strcpy(frame.data, "Oieeer");
-    frame.crc = 0;
-    if(strcmp(tipo, "00000") == 0){
-        init_frame(&frame, 0, TIPO_ACK);
-    } else if (strcmp(tipo, "00001") == 0) {
-        init_frame(&frame, 0, TIPO_NACK);
-    } else if (strcmp(tipo, "01010") == 0) {
-        init_frame(&frame, 0, TIPO_LISTA);
-    } else if (strcmp(tipo, "01011") == 0) {
-        init_frame(&frame, 0, TIPO_BAIXAR);
-    } else if (strcmp(tipo, "10000") == 0) {
-        init_frame(&frame, 0, TIPO_MOSTRA_NA_TELA);
-    } else if (strcmp(tipo, "10001") == 0) {
-        init_frame(&frame, 0, TIPO_DESCRITOR_ARQUIVO);
-    } else if (strcmp(tipo, "10010") == 0) {
-        init_frame(&frame, 0, TIPO_DADOS);
-    } else if (strcmp(tipo, "11110") == 0) {
-        init_frame(&frame, 0, TIPO_FIM_TX);
-    } else if (strcmp(tipo, "11111") == 0) {
-        init_frame(&frame, 0, TIPO_ERRO);
-    } else {
-        fprintf(stderr, "Tipo de mensagem inválido\n");
-        exit(-1);
-    }
+    char arg[100];
 
+    while(1){
+        MenuCliente();
+        //pega oq foi digitado da entrada
+        fgets(arg, 100, stdin);
+        strtok(arg, "\n");
+
+        if(strcmp(arg, "01010") == 0){
+            lista(soquete);
+        }
+    }
+    /*
     ssize_t num_bytes = send(soquete, &frame, sizeof(frame), 0); //send() envia a mensagem para o servidor
 
     if (num_bytes == -1) {
@@ -82,7 +75,7 @@ int main(int argc, char **argv) {
     printf("  Tipo: 0x%02X\n", frame.tipo);
     printf("  Dados: %s\n", frame.data);
     printf("  CRC: 0x%02X\n", frame.crc);
-    
+ */
     close(soquete); //diz que a operacao terminou ver na imagem
     return 0;
 }
