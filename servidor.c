@@ -76,7 +76,7 @@ void lista_arquivos(const char *diretorio, frame_t *frame) {
     }
 
 int main() {
-    // const char *diretorio = "./filmes";
+    const char *diretorio = "./filmes";
 
     int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
     frame_t frameS;
@@ -89,53 +89,52 @@ int main() {
                 exit(-1);
         }
 
-    //deve ter algum jeito melhor de identificar o tipo do frame, fiz assim por enquanto
-    switch(frameR.tipo){
-        case TIPO_LISTA:
-            recv(soquete, &frameR, sizeof(frameR), 0);
-            printf("servidor recebeu: %s\n", frameR.data);
-                strcpy(frameS.data, "recebi seu oi cliente");
-				set_frame(&frameS, 0, TIPO_LISTA);
-				// lista_arquivos(diretorio, &frameS);
-				printf("servidor enviou: %s\n", frameS.data);
-				send(soquete, &frameS, sizeof(frameS), 0);
-            break;
-        /*case TIPO_ACK:
-            printf("ACK\n");
-            break;
-        case TIPO_NACK:
-            printf("NACK\n");
-            break;
-        case TIPO_BAIXAR:
-            printf("BAIXAR\n");
-            break;
-        case TIPO_MOSTRA_NA_TELA:
-            printf("MOSTRA NA TELA\n");
-            break;
-        case TIPO_DESCRITOR_ARQUIVO:
-            printf("DESCRITOR ARQUIVO\n");
-            break;
-        case TIPO_DADOS:
-            printf("DADOS\n");
-            break;
-        case TIPO_FIM_TX:
-            printf("FIM TX\n");
-            break;
-        case TIPO_ERRO:
-            printf("ERRO\n");
-            break;*/
+        //deve ter algum jeito melhor de identificar o tipo do frame, fiz assim por enquanto
+        switch(frameR.tipo){
+            case TIPO_LISTA:
+                recv(soquete, &frameR, sizeof(frameR), 0);
+                printf("servidor recebeu: %s\n", frameR.data);
+                    strcpy(frameS.data, "recebi seu oi cliente");
+    				set_frame(&frameS, 0, TIPO_LISTA);
+    				//lista_arquivos(diretorio, &frameS);
+    				printf("servidor enviou: %s\n", frameS.data);
+    				send(soquete, &frameS, sizeof(frameS), 0);
+                break;
+            /*case TIPO_ACK:
+                printf("ACK\n");
+                break;
+            case TIPO_NACK:
+                printf("NACK\n");
+                break;
+            case TIPO_BAIXAR:
+                printf("BAIXAR\n");
+                break;
+            case TIPO_MOSTRA_NA_TELA:
+                printf("MOSTRA NA TELA\n");
+                break;
+            case TIPO_DESCRITOR_ARQUIVO:
+                printf("DESCRITOR ARQUIVO\n");
+                break;
+            case TIPO_DADOS:
+                printf("DADOS\n");
+                break;
+            case TIPO_FIM_TX:
+                printf("FIM TX\n");
+                break;
+            case TIPO_ERRO:
+                printf("ERRO\n");
+                break;*/
+        }
+        /*
+        printf("Servidor recebeu: \n");
+        printf("  Marcador de Início: 0x%02X\n", frame.marcador_inicio);
+        printf("  Tamanho: %u\n", frame.tamanho);
+        printf("  Sequência: %u\n", frame.sequencia);
+        printf("  Tipo: 0x%02X\n", frame.tipo);
+        printf("  Dados: %s\n", frame.data);
+        printf("  CRC: 0x%02X\n", frame.crc);
+        */
     }
-    /*
-    printf("Servidor recebeu: \n");
-    printf("  Marcador de Início: 0x%02X\n", frame.marcador_inicio);
-    printf("  Tamanho: %u\n", frame.tamanho);
-    printf("  Sequência: %u\n", frame.sequencia);
-    printf("  Tipo: 0x%02X\n", frame.tipo);
-    printf("  Dados: %s\n", frame.data);
-    printf("  CRC: 0x%02X\n", frame.crc);
-     */
-
     close(soquete);  // diz que a operacao terminou ver na imagem
     return 0;
-    }
 }

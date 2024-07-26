@@ -22,6 +22,7 @@ void init_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
 }
 
 void MenuCliente(){
+    printf("-------------------");
     printf("Cliente Iniciado\n");
     printf("Digite seu comando: \n");
 }
@@ -35,8 +36,8 @@ void lista(int socket){
         {
             perror("Erro ao enviar mensagem! \n");
         }
-        recv(socket, &frameRecv, sizeof(frameRecv), 0);
-        printf(" Cliente recebeu: %s\n", frameRecv.data);
+    recv(socket, &frameRecv, sizeof(frameRecv), 0);
+    printf(" Cliente recebeu: %s\n", frameRecv.data);
 }
 
 int main(int argc, char **argv) {
