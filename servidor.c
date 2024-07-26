@@ -93,12 +93,14 @@ int main() {
         switch(frameR.tipo){
             case TIPO_LISTA:
                 recv(soquete, &frameR, sizeof(frameR), 0);
+                // se receber certo manda um ack para o cliente
+                // nao sei oq seria receber errado, talvez um comando invalido
                 printf("servidor recebeu: %s\n", frameR.data);
-                    strcpy(frameS.data, "recebi seu oi cliente");
-    				set_frame(&frameS, 0, TIPO_LISTA);
-    				//lista_arquivos(diretorio, &frameS);
-    				printf("servidor enviou: %s\n", frameS.data);
-    				send(soquete, &frameS, sizeof(frameS), 0);
+                //strcpy(frameS.data, "recebi seu oi cliente");
+                set_frame(&frameS, 0, TIPO_LISTA);
+                lista_arquivos(diretorio, &frameS);
+                printf("servidor enviou: %s\n", frameS.data);
+                send(soquete, &frameS, sizeof(frameS), 0);
                 break;
             /*case TIPO_ACK:
                 printf("ACK\n");
