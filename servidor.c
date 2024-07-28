@@ -95,7 +95,7 @@ int main() {
                 // recebeu tipo lista e vai confirmar isso pro cliente
                 set_frame(&frameS, 0, TIPO_ACK);
                 send(soquete, &frameS, sizeof(frameS), 0);
-                printf("servidor mandou ACK");
+                printf("servidor mandou ACK\n");
                 //seta o frame para enviar a lista
                 memset(&frameS, 0, sizeof(frameS));
                 set_frame(&frameS, 0, TIPO_LISTA);

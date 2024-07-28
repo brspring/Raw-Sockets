@@ -70,7 +70,7 @@ void lista(int socket){
                         }
                     case  TIPO_FIM_TX:
                         fim_tx:
-                        printf("Fim da transmissão\n");
+                        printf("\nFim da transmissão!\n");
                         break;
                     case  TIPO_ERRO:
                         goto tipo_erro;
