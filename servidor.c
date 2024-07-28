@@ -78,7 +78,7 @@ void lista_arquivos(const char *diretorio, frame_t *frame) {
 int main() {
     const char *diretorio = "./filmes";
 
-    int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
+    int soquete = cria_raw_socket("eno1"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
     frame_t frameS;
     frame_t frameR;
 
@@ -102,6 +102,20 @@ int main() {
                 lista_arquivos(diretorio, &frameS);
                 printf("servidor enviou: %s\n", frameS.data);
                 send(soquete, &frameS, sizeof(frameS), 0);
+                    while(1){
+                        if(recv(soquete, &frameR, sizeof(frameR), 0) == -1)
+                        {
+                            perror("Erro ao receber dados");
+                            exit(-1);
+                        }
+                        if(frameR.tipo == TIPO_ACK){
+                            memset(&frameS, 0, sizeof(frameS));
+                            printf("teste fim tx");
+                            set_frame(&frameS, 0, TIPO_FIM_TX);
+                            send(soquete, &frameS, sizeof(frameS), 0);
+                            break;
+                        }
+                    }
                 break;
             /*case TIPO_ACK:
                 printf("ACK\n");

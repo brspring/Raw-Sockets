@@ -43,14 +43,34 @@ void lista(int socket){
             printf("ACK\n");
             memset(&frameRecv, 0, sizeof(frameRecv));
             while (1) {
+                if (recv(socket, &frameRecv, sizeof(frameRecv), 0) == -1) {
+                    perror("Erro ao receber mensagem! \n");
+                    break;
+                }
                 switch(frameRecv.tipo){
                     case TIPO_LISTA:
-                        printf("Cliente recebeu:\n %s", frameRecv.data);
-                        if (recv(socket, &frameRecv, sizeof(frameRecv), 0) == -1) {
-                            perror("Erro ao receber mensagem! \n");
-                            break;
+                        printf("Os filmes disponíveis são:\n %s", frameRecv.data);
+                        //cliente confirma que recebeu a lista, isso tera um if com crc dps
+                        memset(&frameSend, 0, sizeof(frameSend));
+                        init_frame(&frameSend, 0, TIPO_ACK);
+                        if (send(socket, &frameSend, sizeof(frameSend), 0) == -1)
+                        {
+                                perror("Erro ao enviar mensagem! \n");
+                        }
+                        while(1){
+                            if (recv(socket, &frameRecv, sizeof(frameRecv), 0) == -1) {
+                                perror("Erro ao receber mensagem! \n");
+                                break;
+                            }
+                            switch(frameRecv.tipo){
+                                case TIPO_FIM_TX:
+                                    goto fim_tx;
+                                    break;
+                            }
                         }
                     case  TIPO_FIM_TX:
+                        fim_tx:
+                        printf("Fim da transmissão\n");
                         break;
                     case  TIPO_ERRO:
                         goto tipo_erro;
