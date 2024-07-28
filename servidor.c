@@ -92,11 +92,12 @@ int main() {
         //deve ter algum jeito melhor de identificar o tipo do frame, fiz assim por enquanto
         switch(frameR.tipo){
             case TIPO_LISTA:
-                recv(soquete, &frameR, sizeof(frameR), 0);
-                // se receber certo manda um ack para o cliente
-                // nao sei oq seria receber errado, talvez um comando invalido
-                printf("servidor recebeu: %s\n", frameR.data);
-                //strcpy(frameS.data, "recebi seu oi cliente");
+                // recebeu tipo lista e vai confirmar isso pro cliente
+                set_frame(&frameS, 0, TIPO_ACK);
+                send(soquete, &frameS, sizeof(frameS), 0);
+                printf("servidor mandou ACK");
+                //seta o frame para enviar a lista
+                memset(&frameS, 0, sizeof(frameS));
                 set_frame(&frameS, 0, TIPO_LISTA);
                 lista_arquivos(diretorio, &frameS);
                 printf("servidor enviou: %s\n", frameS.data);

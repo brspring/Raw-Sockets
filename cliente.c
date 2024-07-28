@@ -36,36 +36,40 @@ void lista(int socket){
         {
             perror("Erro ao enviar mensagem! \n");
         }
-    printf("teste 1 \n");
+
     recv(socket, &frameRecv, sizeof(frameRecv), 0);
     switch(frameRecv.tipo) {
-    case TIPO_ACK:
-    case TIPO_LISTA:
-        while (1) {
-            printf("Cliente recebeu:\n %s", frameRecv.data);
-            if (recv(socket, &frameRecv, sizeof(frameRecv), 0) == -1) {
-                perror("Erro ao receber mensagem! \n");
-                break;
-            }
-            if (frameRecv.tipo == TIPO_FIM_TX) {
-                break;
-            } else if ((frameRecv.tipo == TIPO_ERRO)) {
-                goto tipo_erro;
-            } else if ((frameRecv.tipo == TIPO_NACK)) {
-                goto tipo_nack;
-            }
-        }
-        break;
-    case TIPO_ERRO:
-        tipo_erro:
-        printf("Erro ao receber a lista de arquivos\n");
-        printf("Envie novamente a mensagem\n");
-        break;
-    case TIPO_NACK:
-        tipo_nack:
-        printf("NACK\n");
-        printf("Envie novamente a mensagem\n");
-        break;
+        case TIPO_ACK:
+            printf("ACK\n");
+            memset(&frameRecv, 0, sizeof(frameRecv));
+            while (1) {
+                switch(frameRecv.tipo){
+                    case TIPO_LISTA:
+                        printf("Cliente recebeu:\n %s", frameRecv.data);
+                        if (recv(socket, &frameRecv, sizeof(frameRecv), 0) == -1) {
+                            perror("Erro ao receber mensagem! \n");
+                            break;
+                        }
+                    case  TIPO_FIM_TX:
+                        break;
+                    case  TIPO_ERRO:
+                        goto tipo_erro;
+                        break;
+                    case TIPO_NACK:
+                        goto tipo_nack;
+                        break;
+                }
+                }
+        case TIPO_ERRO:
+            tipo_erro:
+            printf("Erro ao receber a lista de arquivos\n");
+            printf("Envie novamente a mensagem\n");
+            break;
+        case TIPO_NACK:
+            tipo_nack:
+            printf("NACK\n");
+            printf("Envie novamente a mensagem\n");
+            break;
 }
 
 
@@ -76,7 +80,7 @@ int main(int argc, char **argv) {
     //frame_t frame;
     //char *tipo = argv[1];
 
-    int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
+    int soquete = cria_raw_socket("eno1"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
     if (soquete == -1) {
         perror("Erro ao criar socket");
         exit(-1);
