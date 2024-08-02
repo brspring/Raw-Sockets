@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <time.h>
 
 void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
         frame->marcador_inicio = BIT_INICIO;
@@ -75,10 +77,54 @@ void lista_arquivos(const char *diretorio, frame_t *frame) {
     closedir(dir);
     }
 
+
+void set_descritor_arquivo(const char *diretorio, char *nome_arquivo, frame_t *frame) {
+    DIR *dir;
+    struct dirent *entry;
+    struct stat file_stat;
+    char file_path[256];
+    char file_info[256];
+
+    dir = opendir(diretorio);
+    if (dir == NULL) {
+        perror("Erro ao abrir o diretório");
+        return;
+    }
+
+    int found = 0;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, nome_arquivo) == 0) {
+            snprintf(file_path, sizeof(file_path), "%s/%s", diretorio, nome_arquivo);
+            if (stat(file_path, &file_stat) == -1) {
+                perror("Erro ao obter informações do arquivo");
+                closedir(dir);
+                return;
+            }
+
+            struct tm *time_info = localtime(&file_stat.st_mtime);
+            char time_str[64];
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", time_info);
+
+            snprintf(file_info, sizeof(file_info), "%s\n%s\n", nome_arquivo, time_str);
+            strncpy(frame->data, file_info, MAX_DATA_SIZE);
+            frame->data[MAX_DATA_SIZE - 1] = '\0'; // Garante que o data esteja null-terminated
+
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found) {
+        snprintf(frame->data, MAX_DATA_SIZE, "Arquivo não encontrado: %s\n", nome_arquivo);
+    }
+
+    closedir(dir);
+}
+
 int main() {
     const char *diretorio = "./filmes";
-
-    int soquete = cria_raw_socket("eno1"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
+    char* nome_arquivo;
+    int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
     frame_t frameS;
     frame_t frameR;
 
@@ -117,20 +163,39 @@ int main() {
                         }
                     }
                 break;
+                case TIPO_BAIXAR:
+                    nome_arquivo = frameR.data;
+                    set_frame(&frameS, 0, TIPO_ACK);
+                    send(soquete, &frameS, sizeof(frameS), 0);
+                    printf("servidor mandou ACK\n");
+
+                    //seta o frame para enviar o descritor
+                    memset(&frameS, 0, sizeof(frameS));
+                    set_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
+                    set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
+                    printf("servidor enviou: %s\n", frameS.data);
+                    send(soquete, &frameS, sizeof(frameS), 0);
+                    while(1){
+                        if(recv(soquete, &frameR, sizeof(frameR), 0) == -1)
+                        {
+                            perror("Erro ao receber dados");
+                            exit(-1);
+                        }
+                        if(frameR.tipo == TIPO_ACK){
+                            // aqui futuramente vai começar a enviar o arquivo
+                            memset(&frameS, 0, sizeof(frameS));
+                            printf("teste fim tx");
+                            //set_frame(&frameS, 0, TIPO_FIM_TX);
+                            send(soquete, &frameS, sizeof(frameS), 0);
+                            break;
+                        }
+                    }
+                break;
             /*case TIPO_ACK:
                 printf("ACK\n");
                 break;
             case TIPO_NACK:
                 printf("NACK\n");
-                break;
-            case TIPO_BAIXAR:
-                printf("BAIXAR\n");
-                break;
-            case TIPO_MOSTRA_NA_TELA:
-                printf("MOSTRA NA TELA\n");
-                break;
-            case TIPO_DESCRITOR_ARQUIVO:
-                printf("DESCRITOR ARQUIVO\n");
                 break;
             case TIPO_DADOS:
                 printf("DADOS\n");
