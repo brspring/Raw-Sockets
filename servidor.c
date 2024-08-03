@@ -25,58 +25,55 @@ void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
 }
 
 // essa funcao so lista os arquivos, n sei como passa eles pelo frame kk
-void lista_arquivos(const char *diretorio, frame_t *frame) {
+void lista_arquivos(const char *diretorio, int soquete) {
     DIR *dir;
     struct dirent *entry;
-    char *leitura_pos;
-    unsigned long int bytes_lidos = 1; // inicio com 1 pq coloco o \0 no fim
-    char *escrita_pos;
-    escrita_pos = frame->data;
+    frame_t frameSend, frameRecv;
+    int sequencia = 0;
+
     dir = opendir(diretorio);
     if (dir == NULL) {
-        perror("Erro em abrir o diretorio");
+        perror("Erro ao abrir o diretorio");
         return;
     }
 
-    printf("Filmes disponiveis '%s':\n", diretorio);
+    printf("Filmes disponíveis em '%s':\n", diretorio);
     while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            int nome_len = strlen(entry->d_name);
 
-        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0){
-            leitura_pos = entry->d_name;
-            unsigned int tam_nome = strlen(entry->d_name);
+            strncpy(frameSend.data, entry->d_name, nome_len);
+            frameSend.data[nome_len] = '\n';
+            frameSend.data[nome_len + 1] = '\0';
+            frameSend.tamanho = nome_len + 1;
+            set_frame(&frameSend, sequencia, TIPO_MOSTRA_NA_TELA);
 
-            int i = 0;
-            while(i < tam_nome){ // enqt não enviou o nome do filme que está
-                if(bytes_lidos + tam_nome + 1 <= MAX_DATA_SIZE){ // se cabe tudo
-                    strcpy(escrita_pos, leitura_pos);
-                    escrita_pos += tam_nome; // ajusta onde vai continuar a escrever no campo de dados
-                    *escrita_pos = '\n'; // bota quebra de linha dps do nome de um filme pra fazer uma lista bonita
-                    escrita_pos++;
-                    bytes_lidos += tam_nome + 1;
-                    i = tam_nome;
-                    frame->tamanho = bytes_lidos;
-                }
-                else { // se não cabe o nome todo
-                    strncpy(escrita_pos, leitura_pos, MAX_DATA_SIZE - bytes_lidos - 1); // adiciona o que cabe e não põe \0 no fim pq ainda vai ter q por mais caracteres pro nome desse filme
-                    leitura_pos += MAX_DATA_SIZE - bytes_lidos - 1;
-                    tam_nome -= MAX_DATA_SIZE - bytes_lidos - 1; // atualiza qnts caracteres ainda faltam pra por todo o nome do filme
-                    frame->tamanho = MAX_DATA_SIZE;
-                    // enviar mensagem pq não cabe mais nada no campo de dados -- tem que fazer ainda
-                    printf("%s", frame->data); // vamos fingir que o print é enviar a msg
-                    escrita_pos = frame->data; // começa a escrever no começo do campo de dados dnv pq enviou a mensagem
-                    bytes_lidos = 1;
-                }
+            if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                perror("Erro ao enviar o frame");
+                closedir(dir);
+                return;
             }
 
+            if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+                perror("Erro ao receber o ACK");
+                closedir(dir);
+                return;
+            }
+
+            if (frameRecv.tipo == TIPO_ACK) {
+                sequencia++;
+                sequencia %= 32; //se passa de 32 ele volta a sequencia
+            } else {
+                if (frameRecv.tipo == TIPO_NACK || frameRecv.tipo == TIPO_ERRO) {
+                    printf("Recebido NACK ou ERRO, reenviando frame...\n");
+                    continue;
+                }
+            }
         }
     }
-    *escrita_pos = '\0';
-    escrita_pos++;
-    // enviar mensagem aqui também pra quando não envia a mensagem por encher o campo de dados
-    printf("%s", frame->data); // vamos fingir que o print é enviar a msg
-    closedir(dir);
-    }
 
+    closedir(dir);
+}
 
 void set_descritor_arquivo(const char *diretorio, char *nome_arquivo, frame_t *frame) {
     DIR *dir;
@@ -216,7 +213,7 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
 int main() {
     const char *diretorio = "./filmes";
     char* nome_arquivo;
-    int soquete = cria_raw_socket("eno1"); //note: enp2s0 pc: eno1
+    int soquete = cria_raw_socket("lo"); //note: enp2s0 pc: eno1
     frame_t frameS;
     frame_t frameR;
 
@@ -235,15 +232,17 @@ int main() {
                 send(soquete, &frameS, sizeof(frameS), 0);
                 printf("servidor mandou ACK\n");
                 //seta o frame para enviar a lista
-                memset(&frameS, 0, sizeof(frameS));
-                set_frame(&frameS, 0, TIPO_MOSTRA_NA_TELA);
-                lista_arquivos(diretorio, &frameS);
-                printf("servidor enviou: %s\n", frameS.data);
+                /*memset(&frameS, 0, sizeof(frameS));
+                set_frame(&frameS, 0, TIPO_MOSTRA_NA_TELA);*/
+                lista_arquivos(diretorio, soquete);
+
+                //tirar isso dps
+                /*printf("servidor enviou: %s\n", frameS.data);
                 if(send(soquete, &frameS, sizeof(frameS), 0) == -1)
                 {
                         perror("Erro ao enviar a lista de arquivos");
                         exit(-1);
-                }
+                }*/
                 break;
             case TIPO_ACK:
                 memset(&frameR, 0, sizeof(frameR));

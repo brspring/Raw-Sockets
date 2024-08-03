@@ -34,6 +34,8 @@ void lista(int soquete){
     frame_t frameRecv;
     init_frame(&frameSend, 0, TIPO_LISTA);
 
+    int sequencia_esperada = 0;
+
     //envia o tipo lista
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
     {
@@ -50,13 +52,27 @@ void lista(int soquete){
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
             case TIPO_MOSTRA_NA_TELA:
-                memset(&frameSend, 0, sizeof(frameSend));
-                init_frame(&frameSend, 0, TIPO_ACK);
-                if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
-                {
-                        perror("Erro ao enviar mensagem! \n");
+                if (frameRecv.sequencia == (sequencia_esperada % 32)) {
+                    printf("%s",frameRecv.data);
+                    printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
+
+                    memset(&frameSend, 0, sizeof(frameSend));
+                    init_frame(&frameSend, 0, TIPO_ACK);
+                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                        perror("Erro ao enviar mensagem\n");
+                        break;
+                    }
+                    sequencia_esperada++;
+                } else {
+                    //se recebe u   m frame fora de ordem, envia NACK
+                    printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
+                    memset(&frameSend, 0, sizeof(frameSend));
+                    init_frame(&frameSend, 0, TIPO_NACK);
+                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                        perror("Erro ao enviar NACK\n");
+                        break;
+                    }
                 }
-                printf("Lista de arquivos: %s\n", frameRecv.data);
                 break;
         }
     }
