@@ -237,31 +237,7 @@ int main() {
                         }
                     }
                     break;
-            /*case TIPO_ACK:
-                printf("ACK\n");
-                break;
-            case TIPO_NACK:
-                printf("NACK\n");
-                break;
-            case TIPO_DADOS:
-                printf("DADOS\n");
-                break;
-            case TIPO_FIM_TX:
-                printf("FIM TX\n");
-                break;
-            case TIPO_ERRO:
-                printf("ERRO\n");
-                break;*/
         }
-        /*
-        printf("Servidor recebeu: \n");
-        printf("  Marcador de Início: 0x%02X\n", frame.marcador_inicio);
-        printf("  Tamanho: %u\n", frame.tamanho);
-        printf("  Sequência: %u\n", frame.sequencia);
-        printf("  Tipo: 0x%02X\n", frame.tipo);
-        printf("  Dados: %s\n", frame.data);
-        printf("  CRC: 0x%02X\n", frame.crc);
-        */
     }
     close(soquete);  // diz que a operacao terminou ver na imagem
     return 0;

@@ -39,10 +39,7 @@ void lista(int soquete){
             perror("Erro ao enviar mensagem! \n");
         }
 
-    if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
-            perror("Erro ao receber mensagem! \n");
-            return;
-    }
+    recv(soquete, &frameRecv, sizeof(frameRecv), 0);
     switch(frameRecv.tipo) {
         case TIPO_ACK:
             printf("ACK\n");
@@ -104,7 +101,6 @@ void baixar(int soquete, char* nome_arquivo){
 
     char buffer_nome_arquivo[256];
     char data[256];
-
     FILE *arquivo = fopen(nome_arquivo, "wb");
     if (arquivo == NULL) {
         perror("Erro ao abrir arquivo para escrita");
@@ -118,10 +114,7 @@ void baixar(int soquete, char* nome_arquivo){
             perror("Erro ao enviar mensagem! \n");
         }
     while(1){
-        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0)) {
-            perror("Erro ao receber mensagem! \n");
-            break;
-        }
+        recv(soquete, &frameRecv, sizeof(frameRecv), 0);
 
         switch(frameRecv.tipo) {
             case TIPO_ACK:
