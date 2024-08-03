@@ -138,7 +138,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
     while ((bytes_read = read(file, frameSend.data, MAX_DATA_SIZE)) > 0) {
         set_frame(&frameSend, sequencia, TIPO_DADOS);
         frameSend.tamanho = bytes_read;
-        frameSend.data[bytes_read] = '\0'; // Garante que a string esteja terminada em '\0'
+        frameSend.data[bytes_read] = '\0'; //garante terminando em '\0'
 
         if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
             perror("Erro ao enviar o frame");
@@ -162,13 +162,53 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
         }
     }
 
-    // Envia o frame de finalização
+    //frame fim tx
     set_frame(&frameSend, sequencia, TIPO_FIM_TX);
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
         perror("Erro ao enviar o frame de finalização");
     }
 
     close(file);
+}
+
+int busca_arquivo_diretorio(const char *diretorio, char *nome_arquivo) {
+    DIR *dir;
+    struct dirent *entry;
+
+    dir = opendir(diretorio);
+    if (dir == NULL) {
+        perror("Erro ao abrir o diretório");
+        return -1;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, nome_arquivo) == 0) {
+            closedir(dir);
+            return 0;
+        }
+    }
+
+    closedir(dir);
+    return -1;
+}
+
+void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
+    frame_t frameS, frameR;
+    memset(&frameS, 0, sizeof(frameS));
+    set_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
+    set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
+    printf("servidor enviou:\n%s", frameS.data);
+    send(soquete, &frameS, sizeof(frameS), 0);
+
+    if (recv(soquete, &frameR, sizeof(frameR), 0) == -1) {
+        perror("Erro ao receber o ACK do descritor");
+    }
+
+    if (frameR.tipo == TIPO_ACK) {
+        enviar_arquivo(diretorio, nome_arquivo, soquete);
+    } else if(frameR.tipo == TIPO_NACK){
+        enviar_descritor(diretorio, nome_arquivo, soquete);
+    }
 }
 
 int main() {
@@ -204,34 +244,36 @@ int main() {
                 }
                 break;
             case TIPO_ACK:
-                if(frameS.tipo == TIPO_MOSTRA_NA_TELA){
-                    goto fim;
-                }
-                memset(&frameS, 0, sizeof(frameS));
-                set_frame(&frameS, 0, TIPO_ACK);
-                send(soquete, &frameS, sizeof(frameS), 0);
+                memset(&frameR, 0, sizeof(frameR));
+                set_frame(&frameR, 0, TIPO_ACK);
                 break;
             case TIPO_BAIXAR:
                     nome_arquivo = frameR.data;
                     printf("nome do arquivo que o servidor recebeu: %s\n", nome_arquivo);
 
-                    memset(&frameS, 0, sizeof(frameS));
-                    set_frame(&frameS, 0, TIPO_ACK);
-                    send(soquete, &frameS, sizeof(frameS), 0);
-                    printf("servidor mandou ACK\n");
-
-                    // Seta o frame para enviar o descritor
-                    memset(&frameS, 0, sizeof(frameS));
-                    set_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
-                    set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
-                    printf("servidor enviou: %s\n", frameS.data);
-                    send(soquete, &frameS, sizeof(frameS), 0);
+                    //se o arquivo passado existir, manda ACK
+                    if(busca_arquivo_diretorio(diretorio, nome_arquivo) == 0){
+                        memset(&frameS, 0, sizeof(frameS));
+                        set_frame(&frameS, 0, TIPO_ACK);
+                        send(soquete, &frameS, sizeof(frameS), 0);
+                        printf("servidor mandou ACK\n");
+                    }else{
+                        memset(&frameS, 0, sizeof(frameS));
+                        set_frame(&frameS, 0, TIPO_ERRO);
+                        frameS.data[0] = NAO_ENCONTRADO;
+                        frameS.data[1] = '\0';
+                        send(soquete, &frameS, sizeof(frameS), 0);
+                        printf("servidor mandou ERRO\n");
+                        break;
+                    }
+                    //envia o descritor
+                    enviar_descritor(diretorio, nome_arquivo, soquete);
                     break;
         }
-        fim:
+        /*fim:
             memset(&frameS, 0, sizeof(frameS));
             set_frame(&frameS, 0, TIPO_FIM_TX);
-            send(soquete, &frameS, sizeof(frameS), 0);
+            send(soquete, &frameS, sizeof(frameS), 0);*/
     }
     close(soquete);  // diz que a operacao terminou ver na imagem
     return 0;

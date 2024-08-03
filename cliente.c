@@ -75,7 +75,7 @@ void baixar(int soquete, char* nome_arquivo){
         //}
 
     init_frame(&frameSend, 0, TIPO_BAIXAR);
-    strcpy(frameSend.data, nome_arquivo);
+    strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
         {
             perror("Erro ao enviar mensagem! \n");
@@ -89,7 +89,7 @@ void baixar(int soquete, char* nome_arquivo){
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
             case TIPO_DESCRITOR_ARQUIVO:
-                separador = strtok(frameRecv.data, "\n");
+                separador = strtok(frameRecv.data, "\n"); //o nome e a data vem um em cada linha, aqui separa
                 if (separador != NULL) {
                     strncpy(buffer_nome_arquivo, separador, sizeof(buffer_nome_arquivo) - 1);
                     buffer_nome_arquivo[sizeof(buffer_nome_arquivo) - 1] = '\0';
@@ -103,12 +103,16 @@ void baixar(int soquete, char* nome_arquivo){
                 printf("Nome do arquivo: %s\n", buffer_nome_arquivo);
                 printf("Data: %s\n", data);
 
+                //manda ack se recebeu o descritor
                 memset(&frameSend, 0, sizeof(frameSend));
                 init_frame(&frameSend, 0, TIPO_ACK);
                 if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
                 {
                     perror("Erro ao enviar mensagem! \n");
                 }
+                break;
+            case TIPO_ERRO:
+                printf("Erro ao encontrar o arquivo: %s\n", frameRecv.data);
                 break;
         }
     }
@@ -129,9 +133,9 @@ int main(int argc, char **argv) {
     while(1) {
         MenuCliente();
         if (fgets(arg, sizeof(arg), stdin) != NULL) {
-            strtok(arg, "\n"); // Remove a nova linha
+            strtok(arg, "\n"); //remove linha
 
-            if (sscanf(arg, "%s %89[^\n]", comando, nome_arquivo) == 2) {
+            if (sscanf(arg, "%s %89[^\n]", comando, nome_arquivo) == 2) { //separa o comando do nome do arquivo
                 if (strcmp(comando, "2") == 0) {
                     printf("Baixando arquivo %s...\n", nome_arquivo);
                     baixar(soquete, nome_arquivo);

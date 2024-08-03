@@ -11,10 +11,16 @@
 #define TIPO_DESCRITOR_ARQUIVO 0x11
 #define TIPO_DADOS 0x12
 #define TIPO_FIM_TX 0x1E
-#define TIPO_ERRO 0x1F
+#define TIPO_ERRO 11111
 
 #define MAX_DATA_SIZE 63  // 63 bytes
 #define BIT_INICIO 0x7E
+
+enum tipo_error {
+    ACESSO_NEGADO = 1,
+    NAO_ENCONTRADO = 2,
+    DISCO_CHEIO = 3,
+};
 
 struct frame {
     unsigned int marcador_inicio:8;
