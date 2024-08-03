@@ -58,14 +58,6 @@ void lista(int soquete){
                 }
                 printf("Lista de arquivos: %s\n", frameRecv.data);
                 break;
-            case TIPO_ERRO:
-                printf("Erro ao receber a lista de arquivos\n");
-                printf("Envie novamente a mensagem\n");
-                break;
-            case TIPO_NACK:
-                printf("NACK\n");
-                printf("Envie novamente a mensagem\n");
-                break;
         }
     }
 }
