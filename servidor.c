@@ -194,27 +194,28 @@ int main() {
                 printf("servidor mandou ACK\n");
                 //seta o frame para enviar a lista
                 memset(&frameS, 0, sizeof(frameS));
-                set_frame(&frameS, 0, TIPO_LISTA);
+                set_frame(&frameS, 0, TIPO_MOSTRA_NA_TELA);
                 lista_arquivos(diretorio, &frameS);
                 printf("servidor enviou: %s\n", frameS.data);
-                send(soquete, &frameS, sizeof(frameS), 0);
-                    while(1){
-                        if(recv(soquete, &frameR, sizeof(frameR), 0) == -1)
-                        {
-                            perror("Erro ao receber dados");
-                            exit(-1);
-                        }
-                        if(frameR.tipo == TIPO_ACK){
-                            memset(&frameS, 0, sizeof(frameS));
-                            printf("teste fim tx");
-                            set_frame(&frameS, 0, TIPO_FIM_TX);
-                            send(soquete, &frameS, sizeof(frameS), 0);
-                            break;
-                        }
-                    }
+                if(send(soquete, &frameS, sizeof(frameS), 0) == -1)
+                {
+                        perror("Erro ao enviar a lista de arquivos");
+                        exit(-1);
+                }
                 break;
-                case TIPO_BAIXAR:
+            case TIPO_ACK:
+                if(frameS.tipo == TIPO_MOSTRA_NA_TELA){
+                    goto fim;
+                }
+                memset(&frameS, 0, sizeof(frameS));
+                set_frame(&frameS, 0, TIPO_ACK);
+                send(soquete, &frameS, sizeof(frameS), 0);
+                break;
+            case TIPO_BAIXAR:
                     nome_arquivo = frameR.data;
+                    printf("nome do arquivo que o servidor recebeu: %s\n", nome_arquivo);
+
+                    memset(&frameS, 0, sizeof(frameS));
                     set_frame(&frameS, 0, TIPO_ACK);
                     send(soquete, &frameS, sizeof(frameS), 0);
                     printf("servidor mandou ACK\n");
@@ -225,19 +226,12 @@ int main() {
                     set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
                     printf("servidor enviou: %s\n", frameS.data);
                     send(soquete, &frameS, sizeof(frameS), 0);
-
-                    while (1) {
-                        if (recv(soquete, &frameR, sizeof(frameR), 0) == -1) {
-                            perror("Erro ao receber dados");
-                            exit(-1);
-                        }
-                        if (frameR.tipo == TIPO_ACK) {
-                            enviar_arquivo(diretorio, nome_arquivo, soquete);
-                            break;
-                        }
-                    }
                     break;
         }
+        fim:
+            memset(&frameS, 0, sizeof(frameS));
+            set_frame(&frameS, 0, TIPO_FIM_TX);
+            send(soquete, &frameS, sizeof(frameS), 0);
     }
     close(soquete);  // diz que a operacao terminou ver na imagem
     return 0;
