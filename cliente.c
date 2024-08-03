@@ -70,11 +70,7 @@ void baixar(int soquete, char* nome_arquivo){
     char data[256];
     int sequencia_esperada = 0;
 
-    FILE *arquivo = fopen(nome_arquivo, "wb");
-    if (arquivo == NULL) {
-        perror("Erro ao abrir arquivo para escrita");
-        return;
-    }
+    FILE *arquivo = NULL;
 
     init_frame(&frameSend, 0, TIPO_BAIXAR);
     strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
@@ -112,14 +108,21 @@ void baixar(int soquete, char* nome_arquivo){
                 {
                     perror("Erro ao enviar mensagem! \n");
                 }
+
+                arquivo = fopen(buffer_nome_arquivo, "wb");
+                if (arquivo == NULL) {
+                    perror("Erro ao abrir arquivo para escrita");
+                    exit(-1);
+                }
                 break;
             case TIPO_ERRO:
                 printf("Erro ao encontrar o arquivo: %s\n", frameRecv.data);
                 break;
             case TIPO_DADOS:
                 if (frameRecv.sequencia == sequencia_esperada) {
+                        printf("recebeu %s\n", frameRecv.data);
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
-                        printf("Recebendo o frame de sequencia: %u\n", frameRecv.sequencia);
+                        printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 
                         memset(&frameSend, 0, sizeof(frameSend));
                         init_frame(&frameSend, 0, TIPO_ACK);
@@ -129,7 +132,7 @@ void baixar(int soquete, char* nome_arquivo){
                         }
                         sequencia_esperada++;
                     } else {
-                        //se recebe um frame fora de ordem, envia NACK
+                        //se recebe u   m frame fora de ordem, envia NACK
                         printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
                         memset(&frameSend, 0, sizeof(frameSend));
                         init_frame(&frameSend, 0, TIPO_NACK);
@@ -141,6 +144,9 @@ void baixar(int soquete, char* nome_arquivo){
                 break;
                 case TIPO_FIM_TX:
                     printf("Recebimento de dados concluído.\n");
+                    if (arquivo != NULL){
+                        fclose(arquivo);
+                    }
                     break;
                 break;
         }
