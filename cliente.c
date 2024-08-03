@@ -39,7 +39,10 @@ void lista(int soquete){
             perror("Erro ao enviar mensagem! \n");
         }
 
-    recv(soquete, &frameRecv, sizeof(frameRecv), 0);
+    if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+            perror("Erro ao receber mensagem! \n");
+            return;
+    }
     switch(frameRecv.tipo) {
         case TIPO_ACK:
             printf("ACK\n");
@@ -102,6 +105,12 @@ void baixar(int soquete, char* nome_arquivo){
     char buffer_nome_arquivo[256];
     char data[256];
 
+    FILE *arquivo = fopen(nome_arquivo, "wb");
+    if (arquivo == NULL) {
+        perror("Erro ao abrir arquivo para escrita");
+        return;
+    }
+
     init_frame(&frameSend, 0, TIPO_BAIXAR);
     strcpy(frameSend.data, nome_arquivo);
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
@@ -109,7 +118,11 @@ void baixar(int soquete, char* nome_arquivo){
             perror("Erro ao enviar mensagem! \n");
         }
     while(1){
-        recv(soquete, &frameRecv, sizeof(frameRecv), 0);
+        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0)) {
+            perror("Erro ao receber mensagem! \n");
+            break;
+        }
+
         switch(frameRecv.tipo) {
             case TIPO_ACK:
                 printf("ACK\n");
@@ -147,6 +160,19 @@ void baixar(int soquete, char* nome_arquivo){
                                     break;
                                 }
                                 switch(frameRecv.tipo){
+                                    case TIPO_DADOS:
+                                        while(1){
+                                            fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
+                                            memset(&frameSend, 0, sizeof(frameSend));
+                                            init_frame(&frameSend, 0, TIPO_ACK);
+                                            if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                                                perror("Erro ao enviar mensagem! \n");
+                                                fclose(arquivo);
+                                                return;
+                                            }
+                                            break;
+                                        }
+                                        break;
                                     case TIPO_FIM_TX:
                                         goto fim_tx;
                                         break;
@@ -164,6 +190,10 @@ void baixar(int soquete, char* nome_arquivo){
                             break;
                     }
                     }
+            case TIPO_DADOS:
+                while(1){
+
+                }
             case TIPO_ERRO:
                 tipo_erro:
                 printf("Erro ao receber a lista de arquivos\n");

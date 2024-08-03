@@ -121,10 +121,60 @@ void set_descritor_arquivo(const char *diretorio, char *nome_arquivo, frame_t *f
     closedir(dir);
 }
 
+void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
+    char file_path[256];
+    frame_t frameSend, frameRecv;
+    int file;
+    ssize_t bytes_read;
+    unsigned int sequencia = 0;
+
+    snprintf(file_path, sizeof(file_path), "%s/%s", diretorio, nome_arquivo);
+    file = open(file_path, O_RDONLY);
+    if (file == -1) {
+        perror("Erro ao abrir o arquivo");
+        return;
+    }
+
+    while ((bytes_read = read(file, frameSend.data, MAX_DATA_SIZE)) > 0) {
+        set_frame(&frameSend, sequencia, TIPO_DADOS);
+        frameSend.tamanho = bytes_read;
+        frameSend.data[bytes_read] = '\0'; // Garante que a string esteja terminada em '\0'
+
+        if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+            perror("Erro ao enviar o frame");
+            close(file);
+            return;
+        }
+
+        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+            perror("Erro ao receber o ACK");
+            close(file);
+            return;
+        }
+
+        if (frameRecv.tipo == TIPO_ACK) {
+            sequencia++;
+        } else {
+            if (frameRecv.tipo == TIPO_NACK || frameRecv.tipo == TIPO_ERRO) {
+                printf("Recebido NACK ou ERRO, reenviando frame...\n");
+                continue;
+            }
+        }
+    }
+
+    // Envia o frame de finalização
+    set_frame(&frameSend, sequencia, TIPO_FIM_TX);
+    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+        perror("Erro ao enviar o frame de finalização");
+    }
+
+    close(file);
+}
+
 int main() {
     const char *diretorio = "./filmes";
     char* nome_arquivo;
-    int soquete = cria_raw_socket("lo"); //lo é loopback para envviar a msg dentro do mesmo PC, acho q eth0 é entre dois PC
+    int soquete = cria_raw_socket("eno1"); //lo é loopback para envviar a msg dentro do mesmo PC
     frame_t frameS;
     frame_t frameR;
 
@@ -169,28 +219,24 @@ int main() {
                     send(soquete, &frameS, sizeof(frameS), 0);
                     printf("servidor mandou ACK\n");
 
-                    //seta o frame para enviar o descritor
+                    // Seta o frame para enviar o descritor
                     memset(&frameS, 0, sizeof(frameS));
                     set_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
                     set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
                     printf("servidor enviou: %s\n", frameS.data);
                     send(soquete, &frameS, sizeof(frameS), 0);
-                    while(1){
-                        if(recv(soquete, &frameR, sizeof(frameR), 0) == -1)
-                        {
+
+                    while (1) {
+                        if (recv(soquete, &frameR, sizeof(frameR), 0) == -1) {
                             perror("Erro ao receber dados");
                             exit(-1);
                         }
-                        if(frameR.tipo == TIPO_ACK){
-                            // aqui futuramente vai começar a enviar o arquivo
-                            memset(&frameS, 0, sizeof(frameS));
-                            printf("teste fim tx");
-                            //set_frame(&frameS, 0, TIPO_FIM_TX);
-                            send(soquete, &frameS, sizeof(frameS), 0);
+                        if (frameR.tipo == TIPO_ACK) {
+                            enviar_arquivo(diretorio, nome_arquivo, soquete);
                             break;
                         }
                     }
-                break;
+                    break;
             /*case TIPO_ACK:
                 printf("ACK\n");
                 break;
