@@ -119,7 +119,8 @@ void baixar(int soquete, char* nome_arquivo){
                 printf("Erro ao encontrar o arquivo: %s\n", frameRecv.data);
                 break;
             case TIPO_DADOS:
-                if (frameRecv.sequencia == sequencia_esperada) {
+                //compara o que recebeu com o mod de 32 para nao passar de 5 bits
+                if (frameRecv.sequencia == (sequencia_esperada % 32)) {
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
                         printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 

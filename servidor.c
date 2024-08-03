@@ -153,6 +153,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
 
         if (frameRecv.tipo == TIPO_ACK) {
             sequencia++;
+            sequencia %= 32; //se passa de 32 ele volta a sequencia
         } else {
             if (frameRecv.tipo == TIPO_NACK || frameRecv.tipo == TIPO_ERRO) {
                 printf("Recebido NACK ou ERRO, reenviando frame...\n");
