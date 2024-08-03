@@ -138,7 +138,6 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
     while ((bytes_read = read(file, frameSend.data, MAX_DATA_SIZE)) > 0) {
         set_frame(&frameSend, sequencia, TIPO_DADOS);
         frameSend.tamanho = bytes_read;
-        frameSend.data[bytes_read] = '\0'; //garante terminando em '\0'
 
         if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
             perror("Erro ao enviar o frame");

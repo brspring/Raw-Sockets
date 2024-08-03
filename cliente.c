@@ -120,7 +120,6 @@ void baixar(int soquete, char* nome_arquivo){
                 break;
             case TIPO_DADOS:
                 if (frameRecv.sequencia == sequencia_esperada) {
-                        printf("recebeu %s\n", frameRecv.data);
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
                         printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 
