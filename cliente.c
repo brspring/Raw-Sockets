@@ -68,11 +68,13 @@ void baixar(int soquete, char* nome_arquivo){
     char *separador;
     char buffer_nome_arquivo[256];
     char data[256];
-    // FILE *arquivo = fopen(nome_arquivo, "wb");
-    //if (arquivo == NULL) {
-        //perror("Erro ao abrir arquivo para escrita");
-        //return;
-        //}
+    int sequencia_esperada = 0;
+
+    FILE *arquivo = fopen(nome_arquivo, "wb");
+    if (arquivo == NULL) {
+        perror("Erro ao abrir arquivo para escrita");
+        return;
+    }
 
     init_frame(&frameSend, 0, TIPO_BAIXAR);
     strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
@@ -114,13 +116,40 @@ void baixar(int soquete, char* nome_arquivo){
             case TIPO_ERRO:
                 printf("Erro ao encontrar o arquivo: %s\n", frameRecv.data);
                 break;
+            case TIPO_DADOS:
+                if (frameRecv.sequencia == sequencia_esperada) {
+                        fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
+                        printf("Recebendo o frame de sequencia: %u\n", frameRecv.sequencia);
+
+                        memset(&frameSend, 0, sizeof(frameSend));
+                        init_frame(&frameSend, 0, TIPO_ACK);
+                        if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                            perror("Erro ao enviar mensagem\n");
+                            break;
+                        }
+                        sequencia_esperada++;
+                    } else {
+                        //se recebe um frame fora de ordem, envia NACK
+                        printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
+                        memset(&frameSend, 0, sizeof(frameSend));
+                        init_frame(&frameSend, 0, TIPO_NACK);
+                        if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                            perror("Erro ao enviar NACK\n");
+                            break;
+                        }
+                    }
+                break;
+                case TIPO_FIM_TX:
+                    printf("Recebimento de dados concluído.\n");
+                    break;
+                break;
         }
     }
 }
 
 
 int main(int argc, char **argv) {
-    int soquete = cria_raw_socket("eno1");
+    int soquete = cria_raw_socket("eno1"); //note: enp2s0 pc: eno1
     if (soquete == -1) {
         perror("Erro ao criar socket");
         exit(-1);

@@ -205,8 +205,10 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
     }
 
     if (frameR.tipo == TIPO_ACK) {
+        printf("ACK descritor recebido, enviar dados\n");
         enviar_arquivo(diretorio, nome_arquivo, soquete);
     } else if(frameR.tipo == TIPO_NACK){
+        printf("ACK descritor recebido, enviar descritor novamente\n");
         enviar_descritor(diretorio, nome_arquivo, soquete);
     }
 }
@@ -214,7 +216,7 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
 int main() {
     const char *diretorio = "./filmes";
     char* nome_arquivo;
-    int soquete = cria_raw_socket("eno1"); //lo é loopback para envviar a msg dentro do mesmo PC
+    int soquete = cria_raw_socket("eno1"); //note: enp2s0 pc: eno1
     frame_t frameS;
     frame_t frameR;
 
