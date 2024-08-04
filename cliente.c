@@ -123,7 +123,7 @@ void lista(int soquete){
 void baixar(int soquete, char* nome_arquivo){
     frame_t frameSend, frameRecv;
     char *separador;
-    char buffer_nome_arquivo[256];
+    char buffer_tamanho[256];
     char data[256];
     int sequencia_esperada = 0;
 
@@ -151,20 +151,6 @@ void baixar(int soquete, char* nome_arquivo){
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
             case TIPO_DESCRITOR_ARQUIVO:
-                separador = strtok(frameRecv.data, "\n"); //o nome e a data vem um em cada linha, aqui separa
-                if (separador != NULL) {
-                    strncpy(buffer_nome_arquivo, separador, sizeof(buffer_nome_arquivo) - 1);
-                    buffer_nome_arquivo[sizeof(buffer_nome_arquivo) - 1] = '\0';
-
-                    separador = strtok(NULL, "\n");
-                    if (separador != NULL) {
-                        strncpy(data, separador, sizeof(data) - 1);
-                        data[sizeof(data) - 1] = '\0';
-                    }
-                }
-                printf("Nome do arquivo: %s\n", buffer_nome_arquivo);
-                printf("Data: %s\n", data);
-
                 uint8_t crc_recebido_desc = frameRecv.crc;
                 frameRecv.crc = 0;
                 uint8_t crc_calculado_desc = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
@@ -179,7 +165,21 @@ void baixar(int soquete, char* nome_arquivo){
                     perror("Erro ao enviar mensagem! \n");
                 }
 
-                arquivo = fopen(buffer_nome_arquivo, "wb");
+                separador = strtok(frameRecv.data, "\n"); //o nome e a data vem um em cada linha, aqui separa
+                if (separador != NULL) {
+                    strncpy(buffer_tamanho, separador, sizeof(buffer_tamanho) - 1);
+                    buffer_tamanho[sizeof(buffer_tamanho) - 1] = '\0';
+
+                    separador = strtok(NULL, "\n");
+                    if (separador != NULL) {
+                        strncpy(data, separador, sizeof(data) - 1);
+                        data[sizeof(data) - 1] = '\0';
+                    }
+                }
+                printf("tamanho do arquivo: %s\n", buffer_tamanho);
+                printf("Data: %s\n", data);
+
+                arquivo = fopen(buffer_tamanho, "wb");
                 if (arquivo == NULL) {
                     perror("Erro ao abrir arquivo para escrita");
                     exit(-1);

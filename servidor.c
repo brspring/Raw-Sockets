@@ -137,7 +137,7 @@ void set_descritor_arquivo(const char *diretorio, char *nome_arquivo, frame_t *f
             char time_str[64];
             strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", time_info);
 
-            snprintf(file_info, sizeof(file_info), "%s\n%s\n", nome_arquivo, time_str);
+            snprintf(file_info, sizeof(file_info), "%ld\n%s\n", file_stat.st_size, time_str);
             strncpy(frame->data, file_info, MAX_DATA_SIZE);
             frame->data[MAX_DATA_SIZE - 1] = '\0'; // Garante que o data esteja null-terminated
 
@@ -233,6 +233,8 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
     size_t tamanho = sizeof(frameS) - sizeof(frameS.crc);
     frameS.crc = gencrc((uint8_t *)&frameS, tamanho);
 
+    printf("tamanho : %ld\n", tamanho);
+    printf("CRC enviado servidor descritor: %d\n", frameS.crc);
     printf("servidor enviou:\n%s", frameS.data);
     send(soquete, &frameS, sizeof(frameS), 0);
 
