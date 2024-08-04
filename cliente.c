@@ -130,11 +130,13 @@ void baixar(int soquete, char* nome_arquivo){
     FILE *arquivo = NULL;
 
     init_frame(&frameSend, 0, TIPO_BAIXAR);
-
-    size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
-    frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
-
     strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
+
+    size_t tamanho_cliente_baixar = sizeof(frameSend) - sizeof(frameSend.crc);
+    printf("Tamanho dos dados para CRC no servidor: %zu\n", tamanho_cliente_baixar);
+    frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente_baixar);
+    printf("CRC : %d\n", frameSend.crc);
+
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
     {
         perror("Erro ao enviar mensagem! \n");

@@ -289,18 +289,17 @@ int main() {
                 set_frame(&frameR, 0, TIPO_ACK);
                 break;
             case TIPO_BAIXAR:
-                    nome_arquivo = frameR.data;
-                    printf("nome do arquivo que o servidor recebeu: %s\n", nome_arquivo);
-
                     uint8_t crc_recebido_baixar = frameR.crc;
                     frameR.crc = 0;
                     size_t tamanho_servidor_baixar = sizeof(frameR) - sizeof(frameR.crc);
-                    printf("Tamanho dos dados para CRC no servidor: %zu\n", tamanho_servidor);
-                    uint8_t crc_calculado_baixar = gencrc((const uint8_t *)&frameR, tamanho_servidor);
+                    printf("Tamanho dos dados para CRC no servidor: %zu\n", tamanho_servidor_baixar);
+                    uint8_t crc_calculado_baixar = gencrc((const uint8_t *)&frameR, tamanho_servidor_baixar);
 
                     printf("CRC calculado pelo servidor: %d\n", crc_calculado_baixar);
                     printf("CRC recebido pelo servidor: %d\n", crc_recebido_baixar);
 
+                    nome_arquivo = frameR.data;
+                    printf("nome do arquivo que o servidor recebeu: %s\n", nome_arquivo);
                     //se o arquivo passado existir, manda ACK
                     if((busca_arquivo_diretorio(diretorio, nome_arquivo) == 0) && (crc_recebido_baixar == crc_calculado_baixar)){
                         memset(&frameS, 0, sizeof(frameS));
