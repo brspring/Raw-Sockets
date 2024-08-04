@@ -19,16 +19,18 @@
 unsigned int gencrc(const uint8_t *data, size_t size) {
     unsigned int crc = 0xff; // Inicializa o CRC com 0xff
     size_t i, j;
+
     for (i = 0; i < size; i++) {
         crc ^= data[i]; // XOR o CRC com o byte de dados atual
+
         for (j = 0; j < 8; j++) {
-            if (crc & 0x80) // Se o bit mais significativo for 1
-                crc = (crc << 1) ^ 0x31; // Desloca à esquerda e XOR com 0x31
+            if (crc & 0x80) // se o bit mais significativo for 1
+                crc = (crc << 1) ^ 0x07; // desloca à esquerda e XOR com 0x07
             else
-                crc <<= 1; // Apenas desloca à esquerda
+                crc <<= 1; //desloca à esquerda
         }
     }
-    return crc; // Retorna o CRC calculado
+    return crc;
 }
 
 void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
@@ -232,7 +234,7 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
 int main() {
     const char *diretorio = "./filmes";
     char* nome_arquivo;
-    int soquete = cria_raw_socket("lo"); //note: enp2s0 pc: eno1
+    int soquete = cria_raw_socket("enp2s0"); //note: enp2s0 pc: eno1
     frame_t frameS;
     frame_t frameR;
 
@@ -247,11 +249,14 @@ int main() {
         switch(frameR.tipo){
             case TIPO_LISTA:
                 // recebeu tipo lista e vai confirmar isso pro cliente
-                uint8_t received_crc = frameR.crc;
+                uint8_t crc_recebido = frameR.crc;
                 frameR.crc = 0;
-                uint8_t calculated_crc = gencrc((const uint8_t *)&frameR, sizeof(frameR) - sizeof(frameR.crc));
-                printf("CRC recebido pelo servidor: %d\n", received_crc);
-                if (received_crc != calculated_crc) {
+                uint8_t crc_calculado = gencrc((const uint8_t *)&frameR, sizeof(frameR) - sizeof(frameR.crc));
+
+                printf("CRC calculado pelo servidor: %d\n", crc_calculado);
+                printf("CRC recebido pelo servidor: %d\n", crc_recebido);
+
+                if (crc_recebido != crc_calculado) {
                     printf("CRC inválido\n");
                     break;
                 }
