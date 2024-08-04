@@ -22,14 +22,16 @@ enum tipo_error {
     DISCO_CHEIO = 3,
 };
 
+#pragma pack(push, 1)
 struct frame {
-    unsigned int marcador_inicio:8;
+    uint8_t marcador_inicio;
     unsigned int tamanho:6;
     unsigned int sequencia:5;
     unsigned int tipo:5;
     char data[MAX_DATA_SIZE];
     uint8_t crc;
 };
+#pragma pack(pop)
 typedef struct frame frame_t;
 
 
