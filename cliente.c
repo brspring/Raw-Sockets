@@ -15,16 +15,18 @@
 unsigned int gencrc(const uint8_t *data, size_t size) {
     unsigned int crc = 0xff; // Inicializa o CRC com 0xff
     size_t i, j;
+
     for (i = 0; i < size; i++) {
         crc ^= data[i]; // XOR o CRC com o byte de dados atual
+
         for (j = 0; j < 8; j++) {
-            if (crc & 0x80) // Se o bit mais significativo for 1
-                crc = (crc << 1) ^ 0x31; // Desloca à esquerda e XOR com 0x31
+            if (crc & 0x80) // se o bit mais significativo for 1
+                crc = (crc << 1) ^ 0x07; // desloca à esquerda e XOR com 0x07
             else
-                crc <<= 1; // Apenas desloca à esquerda
+                crc <<= 1; //desloca à esquerda
         }
     }
-    return crc; // Retorna o CRC calculado
+    return crc;
 }
 
 void init_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
@@ -32,7 +34,7 @@ void init_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
     frame->sequencia = sequencia;
     frame->tipo = tipo;
     frame->tamanho = strlen(frame->data);
-    frame->crc = gencrc((uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
+    //frame->crc = gencrc((uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
 }
 
 void MenuCliente(){
@@ -46,10 +48,11 @@ void MenuCliente(){
 void lista(int soquete){
     frame_t frameSend;
     frame_t frameRecv;
-    init_frame(&frameSend, 0, TIPO_LISTA);
-
     int sequencia_esperada = 0;
 
+    init_frame(&frameSend, 0, TIPO_LISTA);
+    frameSend.crc = gencrc((uint8_t *)&frameSend, sizeof(frameSend) - sizeof(frameSend.crc));
+    printf("cliente enviou o CRC: %u\n", frameSend.crc);
     //envia o tipo lista
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
     {
@@ -69,9 +72,19 @@ void lista(int soquete){
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
             case TIPO_MOSTRA_NA_TELA:
-                if (frameRecv.sequencia == (sequencia_esperada % 32) && frameRecv.crc == gencrc((uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc))) {
+                printf("crc recebido: %u\n", frameRecv.crc);
+                printf("crc calculado: %u\n", gencrc((uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc)));
+                if (frameRecv.sequencia == (sequencia_esperada % 32)) {
                     printf("%s",frameRecv.data);
                     printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
+
+                    uint8_t received_crc = frameRecv.crc;
+                    frameRecv.crc = 0;
+                    uint8_t calculated_crc = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
+
+                    if (calculated_crc == received_crc){
+                        printf("crc deu boa ------------\n");
+                    }
 
                     memset(&frameSend, 0, sizeof(frameSend));
                     init_frame(&frameSend, 0, TIPO_ACK);

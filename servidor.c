@@ -36,7 +36,7 @@ void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
     frame->sequencia = sequencia;
     frame->tipo = tipo;
     frame->tamanho = strlen(frame->data);
-    frame->crc = gencrc((const uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
+    // frame->crc = gencrc((const uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
 }
 
 // essa funcao so lista os arquivos, n sei como passa eles pelo frame kk
@@ -247,6 +247,15 @@ int main() {
         switch(frameR.tipo){
             case TIPO_LISTA:
                 // recebeu tipo lista e vai confirmar isso pro cliente
+                uint8_t received_crc = frameR.crc;
+                frameR.crc = 0;
+                uint8_t calculated_crc = gencrc((const uint8_t *)&frameR, sizeof(frameR) - sizeof(frameR.crc));
+                printf("CRC recebido pelo servidor: %d\n", received_crc);
+                if (received_crc != calculated_crc) {
+                    printf("CRC inválido\n");
+                    break;
+                }
+
                 set_frame(&frameS, 0, TIPO_ACK);
                 send(soquete, &frameS, sizeof(frameS), 0);
                 printf("servidor mandou ACK\n");
