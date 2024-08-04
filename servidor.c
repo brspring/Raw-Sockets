@@ -154,22 +154,25 @@ void set_descritor_arquivo(const char *diretorio, char *nome_arquivo, frame_t *f
 }
 
 void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
-    char file_path[256];
+    char caminho_arquivo[256];
     frame_t frameSend, frameRecv;
     int file;
-    ssize_t bytes_read;
+    ssize_t bytes_lidos;
     unsigned int sequencia = 0;
 
-    snprintf(file_path, sizeof(file_path), "%s/%s", diretorio, nome_arquivo);
-    file = open(file_path, O_RDONLY);
+    snprintf(caminho_arquivo, sizeof(caminho_arquivo), "%s/%s", diretorio, nome_arquivo);
+    file = open(caminho_arquivo, O_RDONLY);
     if (file == -1) {
         perror("Erro ao abrir o arquivo");
         return;
     }
 
-    while ((bytes_read = read(file, frameSend.data, MAX_DATA_SIZE)) > 0) {
+    while ((bytes_lidos = read(file, frameSend.data, MAX_DATA_SIZE)) > 0) {
         set_frame(&frameSend, sequencia, TIPO_DADOS);
-        frameSend.tamanho = bytes_read;
+        frameSend.tamanho = bytes_lidos;
+
+        size_t tamanho_servidor = sizeof(frameSend) - sizeof(frameSend.crc);
+        frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_servidor);
 
         if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
             perror("Erro ao enviar o frame");
@@ -233,10 +236,9 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
     size_t tamanho = sizeof(frameS) - sizeof(frameS.crc);
     frameS.crc = gencrc((uint8_t *)&frameS, tamanho);
 
-    printf("tamanho : %ld\n", tamanho);
-    printf("CRC enviado servidor descritor: %d\n", frameS.crc);
-    printf("servidor enviou:\n%s", frameS.data);
-    send(soquete, &frameS, sizeof(frameS), 0);
+    if (send(soquete, &frameS, sizeof(frameS), 0) == -1) {
+        perror("Erro ao enviar o descritor do arquivo");
+    }
 
     if (recv(soquete, &frameR, sizeof(frameR), 0) == -1) {
         perror("Erro ao receber o ACK do descritor");
@@ -272,11 +274,7 @@ int main() {
                 uint8_t crc_recebido = frameR.crc;
                 frameR.crc = 0;
                 size_t tamanho_servidor = sizeof(frameR) - sizeof(frameR.crc);
-                printf("Tamanho dos dados para CRC no servidor: %zu\n", tamanho_servidor);
                 uint8_t crc_calculado = gencrc((const uint8_t *)&frameR, tamanho_servidor);
-
-                printf("CRC calculado pelo servidor: %d\n", crc_calculado);
-                printf("CRC recebido pelo servidor: %d\n", crc_recebido);
 
                 if (crc_recebido != crc_calculado) {
                     set_frame(&frameS, 0, TIPO_NACK);
@@ -298,14 +296,9 @@ int main() {
                     uint8_t crc_recebido_baixar = frameR.crc;
                     frameR.crc = 0;
                     size_t tamanho_servidor_baixar = sizeof(frameR) - sizeof(frameR.crc);
-                    printf("Tamanho dos dados para CRC no servidor: %zu\n", tamanho_servidor_baixar);
                     uint8_t crc_calculado_baixar = gencrc((const uint8_t *)&frameR, tamanho_servidor_baixar);
 
-                    printf("CRC calculado pelo servidor: %d\n", crc_calculado_baixar);
-                    printf("CRC recebido pelo servidor: %d\n", crc_recebido_baixar);
-
                     nome_arquivo = frameR.data;
-                    printf("nome do arquivo que o servidor recebeu: %s\n", nome_arquivo);
                     //se o arquivo passado existir, manda ACK
                     if((busca_arquivo_diretorio(diretorio, nome_arquivo) == 0) && (crc_recebido_baixar == crc_calculado_baixar)){
                         memset(&frameS, 0, sizeof(frameS));
@@ -324,6 +317,9 @@ int main() {
                         printf("servidor mandou ERRO\n");
                         break;
                     }
+            case TIPO_NACK:
+                memset(&frameR, 0, sizeof(frameR));
+                break;
         }
         /*fim:
             memset(&frameS, 0, sizeof(frameS));

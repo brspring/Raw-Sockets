@@ -155,42 +155,55 @@ void baixar(int soquete, char* nome_arquivo){
                 frameRecv.crc = 0;
                 uint8_t crc_calculado_desc = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
 
-                printf("CRC Recebido: %d\n", crc_recebido_desc);
-                printf("CRC Calculado: %d\n", crc_calculado_desc);
                 //manda ack se recebeu o descritor
-                memset(&frameSend, 0, sizeof(frameSend));
-                init_frame(&frameSend, 0, TIPO_ACK);
-                if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
+                if (crc_calculado_desc == crc_recebido_desc)
                 {
-                    perror("Erro ao enviar mensagem! \n");
-                }
+                    memset(&frameSend, 0, sizeof(frameSend));
+                    init_frame(&frameSend, 0, TIPO_ACK);
+                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
+                    {
+                        perror("Erro ao enviar mensagem! \n");
+                    }
 
-                separador = strtok(frameRecv.data, "\n"); //o nome e a data vem um em cada linha, aqui separa
-                if (separador != NULL) {
-                    strncpy(buffer_tamanho, separador, sizeof(buffer_tamanho) - 1);
-                    buffer_tamanho[sizeof(buffer_tamanho) - 1] = '\0';
-
-                    separador = strtok(NULL, "\n");
+                    separador = strtok(frameRecv.data, "\n"); //o tamanho e a data vem um em cada linha, aqui separa
                     if (separador != NULL) {
-                        strncpy(data, separador, sizeof(data) - 1);
-                        data[sizeof(data) - 1] = '\0';
+                        strncpy(buffer_tamanho, separador, sizeof(buffer_tamanho) - 1);
+                        buffer_tamanho[sizeof(buffer_tamanho) - 1] = '\0';
+
+                        separador = strtok(NULL, "\n");
+                        if (separador != NULL) {
+                            strncpy(data, separador, sizeof(data) - 1);
+                            data[sizeof(data) - 1] = '\0';
+                        }
+                    }
+                    printf("Tamanho do arquivo: %s\n", buffer_tamanho);
+                    printf("Data: %s\n", data);
+
+                    arquivo = fopen(nome_arquivo, "wb");
+                    if (arquivo == NULL) {
+                        perror("Erro ao abrir arquivo para escrita");
+                        exit(-1);
+                    }
+                    break;
+                } else {
+                    memset(&frameSend, 0, sizeof(frameSend));
+                    init_frame(&frameSend, 0, TIPO_NACK);
+                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                        perror("Erro ao enviar NACK\n");
+                        break;
                     }
                 }
-                printf("tamanho do arquivo: %s\n", buffer_tamanho);
-                printf("Data: %s\n", data);
-
-                arquivo = fopen(buffer_tamanho, "wb");
-                if (arquivo == NULL) {
-                    perror("Erro ao abrir arquivo para escrita");
-                    exit(-1);
-                }
-                break;
             case TIPO_ERRO:
                 printf("Erro ao encontrar o arquivo: %s\n", frameRecv.data);
                 break;
             case TIPO_DADOS:
                 //compara o que recebeu com o mod de 32 para nao passar de 5 bits
-                if (frameRecv.sequencia == (sequencia_esperada % 32)) {
+                uint8_t crc_recebido_dados = frameRecv.crc;
+                frameRecv.crc = 0;
+                size_t tamanho_servidor_dados = sizeof(frameRecv) - sizeof(frameRecv.crc);
+                uint8_t crc_calculado_dados = gencrc((const uint8_t *)&frameRecv, tamanho_servidor_dados);
+
+                if (frameRecv.sequencia == (sequencia_esperada % 32) && crc_calculado_dados == crc_recebido_dados) {
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
                         printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 
