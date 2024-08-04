@@ -203,7 +203,7 @@ void baixar(int soquete, char* nome_arquivo){
                 size_t tamanho_servidor_dados = sizeof(frameRecv) - sizeof(frameRecv.crc);
                 uint8_t crc_calculado_dados = gencrc((const uint8_t *)&frameRecv, tamanho_servidor_dados);
 
-                if (frameRecv.sequencia == (sequencia_esperada % 32) && crc_calculado_dados == crc_recebido_dados) {
+                if (frameRecv.sequencia == sequencia_esperada && crc_calculado_dados == crc_recebido_dados) {
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
                         printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 
@@ -214,6 +214,9 @@ void baixar(int soquete, char* nome_arquivo){
                             break;
                         }
                         sequencia_esperada++;
+                        if (sequencia_esperada > 31){
+                            sequencia_esperada = 0;
+                        }
                     } else {
                         //se recebe u   m frame fora de ordem, envia NACK
                         printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
