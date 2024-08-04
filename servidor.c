@@ -91,6 +91,21 @@ void lista_arquivos(const char *diretorio, int soquete) {
             }
         }
     }
+    memset(&frameSend, 0, sizeof(frameSend));
+    memset(&frameRecv, 0, sizeof(frameRecv));
+    set_frame(&frameSend, sequencia, TIPO_FIM_TX);
+
+    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+        perror("Erro ao enviar frame TIPO_FIM_TX");
+        closedir(dir);
+        return;
+    }
+    if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+        perror("Erro ao receber o ACK");
+        closedir(dir);
+        return;
+    }
+    printf("Lista de arquivos enviada com sucesso!\n");
 
     closedir(dir);
 }

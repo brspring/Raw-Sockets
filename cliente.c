@@ -108,6 +108,15 @@ void lista(int soquete){
                     }
                 }
                 break;
+            case TIPO_FIM_TX:
+                memset(&frameSend, 0, sizeof(frameSend));
+                init_frame(&frameSend, 0, TIPO_ACK);
+                if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
+                    perror("Erro ao enviar mensagem\n");
+                    break;
+                }
+                break;
+
         }
     }
 }
