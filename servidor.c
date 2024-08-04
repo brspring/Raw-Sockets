@@ -63,7 +63,10 @@ void lista_arquivos(const char *diretorio, int soquete) {
             frameSend.data[nome_len] = '\n';
             frameSend.data[nome_len + 1] = '\0';
             frameSend.tamanho = nome_len + 1;
+
             set_frame(&frameSend, sequencia, TIPO_MOSTRA_NA_TELA);
+            size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
+            frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
 
             if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
                 perror("Erro ao enviar o frame");
@@ -77,11 +80,7 @@ void lista_arquivos(const char *diretorio, int soquete) {
                 return;
             }
 
-            uint8_t received_crc = frameRecv.crc;
-            frameRecv.crc = 0;
-            uint8_t calculated_crc = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
-
-            if (frameRecv.tipo == TIPO_ACK && received_crc == calculated_crc) {
+            if (frameRecv.tipo == TIPO_ACK) {
                 sequencia++;
                 sequencia %= 32; //se passa de 32 ele volta a sequencia
             } else {
@@ -259,25 +258,16 @@ int main() {
                 printf("CRC recebido pelo servidor: %d\n", crc_recebido);
 
                 if (crc_recebido != crc_calculado) {
-                    printf("CRC inválido\n");
+                    set_frame(&frameS, 0, TIPO_NACK);
+                    send(soquete, &frameS, sizeof(frameS), 0);
+                    printf("servidor mandou NACK\n");
                     break;
+                }else{
+                    set_frame(&frameS, 0, TIPO_ACK);
+                    send(soquete, &frameS, sizeof(frameS), 0);
+                    printf("servidor mandou ACK\n");
+                    lista_arquivos(diretorio, soquete);
                 }
-
-                set_frame(&frameS, 0, TIPO_ACK);
-                send(soquete, &frameS, sizeof(frameS), 0);
-                printf("servidor mandou ACK\n");
-                //seta o frame para enviar a lista
-                /*memset(&frameS, 0, sizeof(frameS));
-                set_frame(&frameS, 0, TIPO_MOSTRA_NA_TELA);*/
-                lista_arquivos(diretorio, soquete);
-
-                //tirar isso dps
-                /*printf("servidor enviou: %s\n", frameS.data);
-                if(send(soquete, &frameS, sizeof(frameS), 0) == -1)
-                {
-                        perror("Erro ao enviar a lista de arquivos");
-                        exit(-1);
-                }*/
                 break;
             case TIPO_ACK:
                 memset(&frameR, 0, sizeof(frameR));

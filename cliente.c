@@ -50,10 +50,11 @@ void lista(int soquete){
     frame_t frameRecv;
     int sequencia_esperada = 0;
 
+    nack_msg:
+
     init_frame(&frameSend, 0, TIPO_LISTA);
 
     size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
-    printf("Tamanho dos dados para CRC no cliente: %zu\n", tamanho_cliente);
     frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
 
     printf("cliente enviou o CRC: %u\n", frameSend.crc);
@@ -75,20 +76,21 @@ void lista(int soquete){
                 printf("ACK\n");
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
+            case TIPO_NACK:
+                printf("NACK\n");
+                memset(&frameSend, 0, sizeof(frameSend));
+                goto nack_msg;
+                break;
             case TIPO_MOSTRA_NA_TELA:
-                printf("crc recebido: %u\n", frameRecv.crc);
-                printf("crc calculado: %u\n", gencrc((uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc)));
+                uint8_t crc_recebido = frameRecv.crc;
+                frameRecv.crc = 0;
+                uint8_t crc_calculado = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
+
+                printf("CLI: crc recebido MOSTRA TELA : %u\n", crc_recebido);
+                printf("CLI: crc calculado MOSTRA TELA : %u\n", crc_calculado);
                 if (frameRecv.sequencia == (sequencia_esperada % 32)) {
                     printf("%s",frameRecv.data);
                     printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
-
-                    uint8_t received_crc = frameRecv.crc;
-                    frameRecv.crc = 0;
-                    uint8_t calculated_crc = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
-
-                    if (calculated_crc == received_crc){
-                        printf("crc deu boa ------------\n");
-                    }
 
                     memset(&frameSend, 0, sizeof(frameSend));
                     init_frame(&frameSend, 0, TIPO_ACK);
