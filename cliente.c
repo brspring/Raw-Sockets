@@ -57,7 +57,7 @@ void lista(int soquete){
     size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
     frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
 
-    printf("cliente enviou o CRC: %u\n", frameSend.crc);
+    printf("Filmes disponíveis:\n");
     //envia o tipo lista
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
     {
@@ -115,8 +115,7 @@ void lista(int soquete){
                     perror("Erro ao enviar mensagem\n");
                     break;
                 }
-                break;
-
+                return;
         }
     }
 }
