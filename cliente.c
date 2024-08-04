@@ -121,8 +121,7 @@ void lista(int soquete){
 }
 
 void baixar(int soquete, char* nome_arquivo){
-    frame_t frameSend;
-    frame_t frameRecv;
+    frame_t frameSend, frameRecv;
     char *separador;
     char buffer_nome_arquivo[256];
     char data[256];
@@ -131,11 +130,16 @@ void baixar(int soquete, char* nome_arquivo){
     FILE *arquivo = NULL;
 
     init_frame(&frameSend, 0, TIPO_BAIXAR);
+
+    size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
+    frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
+
     strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
-        {
-            perror("Erro ao enviar mensagem! \n");
-        }
+    {
+        perror("Erro ao enviar mensagem! \n");
+    }
+
     while(1){
         recv(soquete, &frameRecv, sizeof(frameRecv), 0);
 
