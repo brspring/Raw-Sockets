@@ -16,12 +16,27 @@
 #include <sys/stat.h>
 #include <time.h>
 
+unsigned int gencrc(const uint8_t *data, size_t size) {
+    unsigned int crc = 0xff; // Inicializa o CRC com 0xff
+    size_t i, j;
+    for (i = 0; i < size; i++) {
+        crc ^= data[i]; // XOR o CRC com o byte de dados atual
+        for (j = 0; j < 8; j++) {
+            if (crc & 0x80) // Se o bit mais significativo for 1
+                crc = (crc << 1) ^ 0x31; // Desloca à esquerda e XOR com 0x31
+            else
+                crc <<= 1; // Apenas desloca à esquerda
+        }
+    }
+    return crc; // Retorna o CRC calculado
+}
+
 void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
-        frame->marcador_inicio = BIT_INICIO;
-        frame->sequencia = sequencia;
-        frame->tipo = tipo;
-        frame->tamanho = strlen(frame->data);
-        frame->crc = 0;
+    frame->marcador_inicio = BIT_INICIO;
+    frame->sequencia = sequencia;
+    frame->tipo = tipo;
+    frame->tamanho = strlen(frame->data);
+    frame->crc = gencrc((const uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
 }
 
 // essa funcao so lista os arquivos, n sei como passa eles pelo frame kk
@@ -60,7 +75,11 @@ void lista_arquivos(const char *diretorio, int soquete) {
                 return;
             }
 
-            if (frameRecv.tipo == TIPO_ACK) {
+            uint8_t received_crc = frameRecv.crc;
+            frameRecv.crc = 0;
+            uint8_t calculated_crc = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
+
+            if (frameRecv.tipo == TIPO_ACK && received_crc == calculated_crc) {
                 sequencia++;
                 sequencia %= 32; //se passa de 32 ele volta a sequencia
             } else {

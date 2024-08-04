@@ -28,7 +28,7 @@ struct frame {
     unsigned int sequencia:5;
     unsigned int tipo:5;
     char data[MAX_DATA_SIZE];
-    unsigned int crc:8;
+    uint8_t crc;
 };
 typedef struct frame frame_t;
 

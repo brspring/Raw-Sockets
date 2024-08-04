@@ -12,13 +12,27 @@
 
 #define BUFFER_SIZE 1024
 
+unsigned int gencrc(const uint8_t *data, size_t size) {
+    unsigned int crc = 0xff; // Inicializa o CRC com 0xff
+    size_t i, j;
+    for (i = 0; i < size; i++) {
+        crc ^= data[i]; // XOR o CRC com o byte de dados atual
+        for (j = 0; j < 8; j++) {
+            if (crc & 0x80) // Se o bit mais significativo for 1
+                crc = (crc << 1) ^ 0x31; // Desloca à esquerda e XOR com 0x31
+            else
+                crc <<= 1; // Apenas desloca à esquerda
+        }
+    }
+    return crc; // Retorna o CRC calculado
+}
 
 void init_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
-        frame->marcador_inicio = BIT_INICIO;
-        frame->sequencia = sequencia;
-        frame->tipo = tipo;
-        frame->tamanho = strlen(frame->data);
-        frame->crc = 0;
+    frame->marcador_inicio = BIT_INICIO;
+    frame->sequencia = sequencia;
+    frame->tipo = tipo;
+    frame->tamanho = strlen(frame->data);
+    frame->crc = gencrc((uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
 }
 
 void MenuCliente(){
@@ -44,7 +58,10 @@ void lista(int soquete){
 
     // esperando resposta do servidor
     while(1){
-        recv(soquete, &frameRecv, sizeof(frameRecv), 0);
+        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+            perror("Erro ao receber mensagem!");
+            return;
+        }
 
         switch(frameRecv.tipo) {
             case TIPO_ACK:
@@ -52,7 +69,7 @@ void lista(int soquete){
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
             case TIPO_MOSTRA_NA_TELA:
-                if (frameRecv.sequencia == (sequencia_esperada % 32)) {
+                if (frameRecv.sequencia == (sequencia_esperada % 32) && frameRecv.crc == gencrc((uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc))) {
                     printf("%s",frameRecv.data);
                     printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 
@@ -64,7 +81,7 @@ void lista(int soquete){
                     }
                     sequencia_esperada++;
                 } else {
-                    //se recebe u   m frame fora de ordem, envia NACK
+                    //se recebe um frame fora de ordem ou com crc errado, envia NACK
                     printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
                     memset(&frameSend, 0, sizeof(frameSend));
                     init_frame(&frameSend, 0, TIPO_NACK);
