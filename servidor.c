@@ -249,15 +249,11 @@ int main() {
         switch(frameR.tipo){
             case TIPO_LISTA:
                 // recebeu tipo lista e vai confirmar isso pro cliente
-                printf("Dados para CRC no servidor:\n");
-                for (int i = 0; i < sizeof(frameR) - sizeof(frameR.crc); i++) {
-                    printf("%02X ", ((uint8_t *)&frameR)[i]);
-                }
-                printf("\n");
-
                 uint8_t crc_recebido = frameR.crc;
                 frameR.crc = 0;
-                uint8_t crc_calculado = gencrc((const uint8_t *)&frameR, sizeof(frameR) - sizeof(frameR.crc));
+                size_t tamanho_servidor = sizeof(frameR) - sizeof(frameR.crc);
+                printf("Tamanho dos dados para CRC no servidor: %zu\n", tamanho_servidor);
+                uint8_t crc_calculado = gencrc((const uint8_t *)&frameR, tamanho_servidor);
 
                 printf("CRC calculado pelo servidor: %d\n", crc_calculado);
                 printf("CRC recebido pelo servidor: %d\n", crc_recebido);

@@ -51,13 +51,10 @@ void lista(int soquete){
     int sequencia_esperada = 0;
 
     init_frame(&frameSend, 0, TIPO_LISTA);
-    frameSend.crc = gencrc((uint8_t *)&frameSend, sizeof(frameSend) - sizeof(frameSend.crc));
 
-    printf("Dados para CRC no cliente:\n");
-    for (int i = 0; i < sizeof(frameSend) - sizeof(frameSend.crc); i++) {
-        printf("%02X ", ((uint8_t *)&frameSend)[i]);
-    }
-    printf("\n");
+    size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
+    printf("Tamanho dos dados para CRC no cliente: %zu\n", tamanho_cliente);
+    frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
 
     printf("cliente enviou o CRC: %u\n", frameSend.crc);
     //envia o tipo lista
