@@ -73,7 +73,6 @@ void lista(int soquete){
 
         switch(frameRecv.tipo) {
             case TIPO_ACK:
-                printf("ACK\n");
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
             case TIPO_NACK:
@@ -86,11 +85,10 @@ void lista(int soquete){
                 frameRecv.crc = 0;
                 uint8_t crc_calculado = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
 
-                printf("CLI: crc recebido MOSTRA TELA : %u\n", crc_recebido);
-                printf("CLI: crc calculado MOSTRA TELA : %u\n", crc_calculado);
-                if (frameRecv.sequencia == (sequencia_esperada % 32)) {
-                    printf("%s",frameRecv.data);
-                    printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
+                // compara o CRC e a sequencia da msg, para enviar ack ou nack
+                if (frameRecv.sequencia == (sequencia_esperada % 32) && crc_recebido == crc_calculado) {
+                    printf("- %s",frameRecv.data);
+                    //printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 
                     memset(&frameSend, 0, sizeof(frameSend));
                     init_frame(&frameSend, 0, TIPO_ACK);

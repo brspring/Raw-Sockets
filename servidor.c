@@ -17,15 +17,15 @@
 #include <time.h>
 
 unsigned int gencrc(const uint8_t *data, size_t size) {
-    unsigned int crc = 0xff; // Inicializa o CRC com 0xff
+    unsigned int crc = 0xff; //CRC inicia com 0xff
     size_t i, j;
 
     for (i = 0; i < size; i++) {
-        crc ^= data[i]; // XOR o CRC com o byte de dados atual
+        crc ^= data[i]; // XOR CRC com os dados
 
         for (j = 0; j < 8; j++) {
             if (crc & 0x80) // se o bit mais significativo for 1
-                crc = (crc << 1) ^ 0x07; // desloca à esquerda e XOR com 0x07
+                crc = (crc << 1) ^ 0x07; // desloca à esquerda + XOR com 0x07
             else
                 crc <<= 1; //desloca à esquerda
         }
@@ -38,7 +38,6 @@ void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
     frame->sequencia = sequencia;
     frame->tipo = tipo;
     frame->tamanho = strlen(frame->data);
-    // frame->crc = gencrc((const uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
 }
 
 // essa funcao so lista os arquivos, n sei como passa eles pelo frame kk
@@ -57,6 +56,7 @@ void lista_arquivos(const char *diretorio, int soquete) {
     printf("Filmes disponíveis em '%s':\n", diretorio);
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            memset(&frameSend, 0, sizeof(frameSend));
             int nome_len = strlen(entry->d_name);
 
             strncpy(frameSend.data, entry->d_name, nome_len);
