@@ -165,6 +165,12 @@ void baixar(int soquete, char* nome_arquivo){
                 printf("Nome do arquivo: %s\n", buffer_nome_arquivo);
                 printf("Data: %s\n", data);
 
+                uint8_t crc_recebido_desc = frameRecv.crc;
+                frameRecv.crc = 0;
+                uint8_t crc_calculado_desc = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
+
+                printf("CRC Recebido: %d\n", crc_recebido_desc);
+                printf("CRC Calculado: %d\n", crc_calculado_desc);
                 //manda ack se recebeu o descritor
                 memset(&frameSend, 0, sizeof(frameSend));
                 init_frame(&frameSend, 0, TIPO_ACK);

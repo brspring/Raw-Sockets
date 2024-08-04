@@ -226,9 +226,13 @@ int busca_arquivo_diretorio(const char *diretorio, char *nome_arquivo) {
 
 void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
     frame_t frameS, frameR;
+
     memset(&frameS, 0, sizeof(frameS));
     set_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
     set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
+    size_t tamanho = sizeof(frameS) - sizeof(frameS.crc);
+    frameS.crc = gencrc((uint8_t *)&frameS, tamanho);
+
     printf("servidor enviou:\n%s", frameS.data);
     send(soquete, &frameS, sizeof(frameS), 0);
 
@@ -307,7 +311,7 @@ int main() {
                         send(soquete, &frameS, sizeof(frameS), 0);
                         printf("servidor mandou ACK\n");
 
-                        //enviar_descritor(diretorio, nome_arquivo, soquete);
+                        enviar_descritor(diretorio, nome_arquivo, soquete);
                         break;
                     }else{
                         memset(&frameS, 0, sizeof(frameS));
