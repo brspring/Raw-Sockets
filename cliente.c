@@ -261,12 +261,11 @@ void baixar(int soquete, char* nome_arquivo){
                     if (arquivo != NULL){
                         fclose(arquivo);
                     }
-                    break;
+                    return;
                 break;
         }
     }
 }
-
 
 int main(int argc, char **argv) {
     int soquete = cria_raw_socket("eno1"); //note: enp2s0 pc: eno1
