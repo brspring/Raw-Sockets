@@ -32,6 +32,17 @@ unsigned int gencrc(const uint8_t *data, size_t size) {
     return crc;
 }
 
+void processar_dados(frame_t *frame) {
+    size_t new_len = 0;
+    for (size_t i = 0; i < frame->tamanho; i++) {
+        frame->data[new_len++] = frame->data[i];
+        if (frame->data[i] == 0x88 && frame->data[i + 1] == 0x81 && frame->data[i + 2] == 0xFF) {
+            i += 2; // Skip the next 0xFF
+        }
+    }
+    frame->tamanho = new_len;
+}
+
 int recv_with_timeout(int socket, frame_t *frame, int timeout_sec) {
     fd_set read_fds;
     struct timeval timeout;
@@ -232,6 +243,7 @@ void baixar(int soquete, char* nome_arquivo){
                 uint8_t crc_calculado_dados = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
 
                 if (frameRecv.sequencia == sequencia_esperada && crc_calculado_dados == crc_recebido_dados) {
+                        processar_dados(&frameRecv);
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
                         printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 

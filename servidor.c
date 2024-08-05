@@ -155,6 +155,19 @@ void set_descritor_arquivo(const char *diretorio, char *nome_arquivo, frame_t *f
     closedir(dir);
 }
 
+void preparar_dados(frame_t *frame) {
+    size_t new_len = 0;
+    char temp_data[MAX_DATA_SIZE * 2]; // Aloca espaço suficiente para o novo tamanho
+    for (size_t i = 0; i < frame->tamanho; i++) {
+        temp_data[new_len++] = frame->data[i];
+        if (frame->data[i] == 0x88 && frame->data[i + 1] == 0x81) {
+            temp_data[new_len++] = 0xFF;
+        }
+    }
+    memcpy(frame->data, temp_data, new_len);
+    frame->tamanho = new_len;
+}
+
 void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
     char caminho_arquivo[256];
     frame_t frameSend, frameRecv;
@@ -173,6 +186,8 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
         memset(&frameRecv, 0, sizeof(frameRecv));
         set_frame(&frameSend, sequencia, TIPO_DADOS);
         frameSend.tamanho = bytes_lidos;
+
+        preparar_dados(&frameSend);
 
         size_t tamanho_servidor = sizeof(frameSend) - sizeof(frameSend.crc);
         frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_servidor);
