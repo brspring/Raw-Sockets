@@ -5,6 +5,9 @@
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <linux/if_packet.h>
 
 #include "API-raw-socket.h"
@@ -27,6 +30,32 @@ unsigned int gencrc(const uint8_t *data, size_t size) {
         }
     }
     return crc;
+}
+
+int recv_with_timeout(int socket, frame_t *frame, int timeout_sec) {
+    fd_set read_fds;
+    struct timeval timeout;
+    int result;
+
+    FD_ZERO(&read_fds);
+    FD_SET(socket, &read_fds);
+
+    timeout.tv_sec = timeout_sec;
+    timeout.tv_usec = 0;
+
+    result = select(socket + 1, &read_fds, NULL, NULL, &timeout);
+
+    if (result == -1) {
+        perror("Erro no select");
+        return -1;
+    } else if (result == 0) {
+        printf("Timeout ao esperar por dados\n");
+        return -1;
+    } else {
+        return recv(socket, frame, sizeof(*frame), 0);
+    }
+
+    //(recv_with_timeout(soquete, &frameRecv, 5) == -1)
 }
 
 void init_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
@@ -66,7 +95,7 @@ void lista(int soquete){
 
     // esperando resposta do servidor
     while(1){
-        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+        if ((recv_with_timeout(soquete, &frameRecv, 5) == -1)) {
             perror("Erro ao receber mensagem!");
             return;
         }
@@ -200,8 +229,7 @@ void baixar(int soquete, char* nome_arquivo){
                 //compara o que recebeu com o mod de 32 para nao passar de 5 bits
                 uint8_t crc_recebido_dados = frameRecv.crc;
                 frameRecv.crc = 0;
-                size_t tamanho_servidor_dados = sizeof(frameRecv) - sizeof(frameRecv.crc);
-                uint8_t crc_calculado_dados = gencrc((const uint8_t *)&frameRecv, tamanho_servidor_dados);
+                uint8_t crc_calculado_dados = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
 
                 if (frameRecv.sequencia == sequencia_esperada && crc_calculado_dados == crc_recebido_dados) {
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
