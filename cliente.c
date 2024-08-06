@@ -29,32 +29,6 @@ void processar_dados(frame_t *frame) {
     frame->tamanho = new_len;
 }
 
-int recv_with_timeout(int socket, frame_t *frame, int timeout_sec) {
-    fd_set read_fds;
-    struct timeval timeout;
-    int result;
-
-    FD_ZERO(&read_fds);
-    FD_SET(socket, &read_fds);
-
-    timeout.tv_sec = timeout_sec;
-    timeout.tv_usec = 0;
-
-    result = select(socket + 1, &read_fds, NULL, NULL, &timeout);
-
-    if (result == -1) {
-        perror("Erro no select");
-        return -1;
-    } else if (result == 0) {
-        printf("Timeout ao esperar por dados\n");
-        return -1;
-    } else {
-        return recv(socket, frame, sizeof(*frame), 0);
-    }
-
-    //(recv_with_timeout(soquete, &frameRecv, 5) == -1)
-}
-
 void MenuCliente(){
     printf("-----------------------------\n");
     printf("Cliente Iniciado\n");
@@ -88,7 +62,7 @@ void lista(int soquete){
     // esperando resposta do servidor
     while(1){
         // faz controle por timeout
-        if ((recv_with_timeout(soquete, &frameRecv, 5) == -1)) {
+        if ((recv_para_espera(soquete, &frameRecv, 5) == -1)) {
             perror("Erro ao receber mensagem!");
             return;
         }
@@ -186,7 +160,7 @@ void baixar(int soquete, char* nome_arquivo){
     }
 
     while(1){
-        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+        if (recv_para_espera(soquete, &frameRecv, 5) == -1) {
             perror("Erro ao receber o ACK do descritor");
         }
 

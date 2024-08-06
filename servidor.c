@@ -51,7 +51,7 @@ void lista_arquivos(const char *diretorio, int soquete) {
                 return;
             }
 
-            if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+            if ((recv_para_espera(soquete, &frameRecv, 5)) == -1) {
                 perror("Erro ao receber o ACK");
                 closedir(dir);
                 return;
@@ -81,7 +81,7 @@ void lista_arquivos(const char *diretorio, int soquete) {
         closedir(dir);
         return;
     }
-    if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+    if ((recv_para_espera(soquete, &frameRecv, 5)) == -1) {
         perror("Erro ao receber o ACK");
         closedir(dir);
         return;
@@ -190,7 +190,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
             return;
         }
 
-        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+        if ((recv_para_espera(soquete, &frameRecv, 5)) == -1) {
             perror("Erro ao receber o ACK");
             close(file);
             return;
@@ -258,7 +258,7 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
     }
 
     // recebe reposta
-    if (recv(soquete, &frameR, sizeof(frameR), 0) == -1) {
+    if ((recv_para_espera(soquete, &frameR, 5)) == -1) {
         perror("Erro ao receber o ACK do descritor");
     }
 
@@ -279,7 +279,7 @@ int main() {
     frame_t frameR;
 
     while(1){
-        if(recv(soquete, &frameR, sizeof(frameR), 0) == -1)
+        if((recv_para_espera(soquete, &frameR, 5)) == -1)
         {
                 perror("Erro ao receber dados");
                 exit(-1);
