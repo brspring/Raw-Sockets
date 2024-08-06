@@ -163,7 +163,6 @@ void open_with_celluloid(const char *output_filename) {
 }
 
 void baixar(int soquete, char* nome_arquivo){
-    // char caminho_arquivo[256];
     frame_t frameSend, frameRecv;
     char *separador;
     char buffer_tamanho[256];
@@ -171,8 +170,6 @@ void baixar(int soquete, char* nome_arquivo){
     int sequencia_esperada = 0;
 
     FILE *arquivo = NULL;
-
-    //snprintf(caminho_arquivo, sizeof(caminho_arquivo), "./%s", nome_arquivo);
 
     init_frame(&frameSend, 0, TIPO_BAIXAR);
     strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
@@ -191,7 +188,6 @@ void baixar(int soquete, char* nome_arquivo){
 
         switch(frameRecv.tipo) {
             case TIPO_ACK:
-                printf("ACK\n");
                 memset(&frameRecv, 0, sizeof(frameRecv));
                 break;
             case TIPO_DESCRITOR_ARQUIVO:
@@ -239,6 +235,10 @@ void baixar(int soquete, char* nome_arquivo){
                         break;
                     }
                 }
+            case TIPO_ERRO:
+                printf("Filme indisponivel");
+                return;
+                break;
             case TIPO_DADOS:
                 //compara o que recebeu com o mod de 32 para nao passar de 5 bits
                 uint8_t crc_recebido_dados = frameRecv.crc;

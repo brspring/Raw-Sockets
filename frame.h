@@ -11,7 +11,7 @@
 #define TIPO_DESCRITOR_ARQUIVO 0x11
 #define TIPO_DADOS 0x12
 #define TIPO_FIM_TX 0x1E
-#define TIPO_ERRO 11111
+#define TIPO_ERRO 0x19
 
 #define MAX_DATA_SIZE 63  // 63 bytes
 #define BIT_INICIO 0x7E

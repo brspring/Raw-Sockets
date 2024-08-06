@@ -308,20 +308,13 @@ int main() {
                     nome_arquivo = frameR.data;
                     //se o arquivo passado existir, manda ACK
                     if((busca_arquivo_diretorio(diretorio, nome_arquivo) == 0) && (crc_recebido_baixar == crc_calculado_baixar)){
-                        memset(&frameS, 0, sizeof(frameS));
-                        init_frame(&frameS, 0, TIPO_ACK);
-                        send(soquete, &frameS, sizeof(frameS), 0);
-                        printf("servidor mandou ACK\n");
-
+                        envia_ack(soquete, &frameS);
                         enviar_descritor(diretorio, nome_arquivo, soquete);
                         break;
                     }else{
                         memset(&frameS, 0, sizeof(frameS));
                         init_frame(&frameS, 0, TIPO_ERRO);
-                        frameS.data[0] = NAO_ENCONTRADO;
-                        frameS.data[1] = '\0';
                         send(soquete, &frameS, sizeof(frameS), 0);
-                        printf("servidor mandou ERRO\n");
                         break;
                     }
             case TIPO_NACK:
