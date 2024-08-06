@@ -212,6 +212,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
 
     //frame fim tx
     init_frame(&frameSend, sequencia, TIPO_FIM_TX);
+    printf("Arquivo enviado!\n");
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
         perror("Erro ao enviar o frame de finalização");
     }

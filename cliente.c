@@ -147,7 +147,7 @@ void open_with_celluloid(const char *output_filename) {
     gid_t gid = pwd->pw_gid;
 
     if (chown(output_filename, uid, gid) != 0) {
-        perror("Failed to change file ownership");
+        perror("Falha para mudar o dono do arquivo");
         exit(EXIT_FAILURE);
     }
 
@@ -156,11 +156,12 @@ void open_with_celluloid(const char *output_filename) {
 
     int result = system(command);
     if (result == -1) {
-        fprintf(stderr, "Error executing system command\n");
+        fprintf(stderr, "Erro ao executar o comando\n");
     } else {
-        printf("Celluloid player opened successfully\n");
+        printf("Celluloid aberto com sucesso\n");
     }
 }
+
 
 void baixar(int soquete, char* nome_arquivo){
     frame_t frameSend, frameRecv;
@@ -234,28 +235,32 @@ void baixar(int soquete, char* nome_arquivo){
                 break;
             case TIPO_DADOS:
                 //compara o que recebeu com o mod de 32 para nao passar de 5 bits
+                int cont = 0;
                 uint8_t crc_recebido_dados = frameRecv.crc;
                 frameRecv.crc = 0;
                 uint8_t crc_calculado_dados = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
+                if (crc_recebido_dados != crc_calculado_dados){
+                    cont++;
+                }
 
-                if (crc_calculado_dados == crc_recebido_dados) {
-                        processar_dados(&frameRecv);
-                        fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
+                if (0){
+                    // envia NACK erro no crc
+                    envia_nack(soquete, &frameSend);
+                }else {
+                    processar_dados(&frameRecv);
+                    fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
 
-                        envia_ack(soquete, &frameSend);
-                        sequencia_esperada++;
-                        if (sequencia_esperada > 31){
-                            sequencia_esperada = 0;
-                        }
-                    } else {
-                        // envia NACK erro no crc
-                        envia_nack(soquete, &frameSend);
+                    envia_ack(soquete, &frameSend);
+                    sequencia_esperada++;
+                    if (sequencia_esperada > 31){
+                        sequencia_esperada = 0;
                     }
+                }
                 break;
                 case TIPO_FIM_TX:
                     printf("Recebimento de dados concluído.\n");
                     if (arquivo != NULL){
-                        //open_with_celluloid(caminho_arquivo);
+                        open_with_celluloid(caminho_arquivo);
                         fclose(arquivo);
                     }
                     return;
