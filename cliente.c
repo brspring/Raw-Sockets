@@ -167,9 +167,12 @@ void baixar(int soquete, char* nome_arquivo){
     char *separador;
     char buffer_tamanho[256];
     char data[50];
+    char caminho_arquivo[256];
     int sequencia_esperada = 0;
 
     FILE *arquivo = NULL;
+
+    snprintf(caminho_arquivo, sizeof(caminho_arquivo), "./%s", nome_arquivo);
 
     init_frame(&frameSend, 0, TIPO_BAIXAR);
     strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
@@ -198,15 +201,11 @@ void baixar(int soquete, char* nome_arquivo){
                 //manda ack se recebeu o descritor
                 if (crc_calculado_desc == crc_recebido_desc)
                 {
-                    memset(&frameSend, 0, sizeof(frameSend));
-                    init_frame(&frameSend, 0, TIPO_ACK);
-                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
-                    {
-                        perror("Erro ao enviar mensagem! \n");
-                    }
+                    envia_ack(soquete, &frameSend);
 
                     separador = strtok(frameRecv.data, "\n"); //o tamanho e a data vem um em cada linha, aqui separa
                     if (separador != NULL) {
+                        // apenas arruma para mostrar na tela
                         strncpy(buffer_tamanho, separador, sizeof(buffer_tamanho) - 1);
                         buffer_tamanho[sizeof(buffer_tamanho) - 1] = '\0';
 
@@ -219,6 +218,7 @@ void baixar(int soquete, char* nome_arquivo){
                     printf("Tamanho do arquivo: %s\n", buffer_tamanho);
                     printf("Data: %s\n", data);
 
+                    // abre o arquivo para comecar a enviar seus dados
                     arquivo = fopen(nome_arquivo, "wb");
                     if (arquivo == NULL) {
                         perror("Erro ao abrir arquivo para escrita");
@@ -226,17 +226,10 @@ void baixar(int soquete, char* nome_arquivo){
                     }
                     break;
                 } else {
-                    printf("crc recebido: %d\n", crc_recebido_desc);
-                    printf("crc calculado: %d\n", crc_calculado_desc);
-                    memset(&frameSend, 0, sizeof(frameSend));
-                    init_frame(&frameSend, 0, TIPO_NACK);
-                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
-                        perror("Erro ao enviar NACK\n");
-                        break;
-                    }
+                    envia_ack(soquete, &frameSend);
                 }
             case TIPO_ERRO:
-                printf("Filme indisponivel");
+                printf("Filme indisponível\n");
                 return;
                 break;
             case TIPO_DADOS:
@@ -248,28 +241,15 @@ void baixar(int soquete, char* nome_arquivo){
                 if (crc_calculado_dados == crc_recebido_dados) {
                         processar_dados(&frameRecv);
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
-                        printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
 
-                        memset(&frameSend, 0, sizeof(frameSend));
-                        init_frame(&frameSend, 0, TIPO_ACK);
-                        if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
-                            perror("Erro ao enviar mensagem\n");
-                            break;
-                        }
+                        envia_ack(soquete, &frameSend);
                         sequencia_esperada++;
                         if (sequencia_esperada > 31){
                             sequencia_esperada = 0;
                         }
                     } else {
-                        //se recebe u   m frame fora de ordem, envia NACK
-                        //printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
-                        printf("CRC ERRADOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
-                        memset(&frameSend, 0, sizeof(frameSend));
-                        init_frame(&frameSend, 0, TIPO_NACK);
-                        if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
-                            perror("Erro ao enviar NACK\n");
-                            break;
-                        }
+                        // envia NACK erro no crc
+                        envia_nack(soquete, &frameSend);
                     }
                 break;
                 case TIPO_FIM_TX:

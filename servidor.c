@@ -175,6 +175,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
             init_frame(&frameSend, sequencia, TIPO_DADOS);
             frameSend.tamanho = bytes_lidos;
 
+            // para placa de rede nao comer os bytes
             preparar_dados(&frameSend);
 
             size_t tamanho_servidor = sizeof(frameSend) - sizeof(frameSend.crc);
@@ -244,20 +245,24 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
 
     memset(&frameS, 0, sizeof(frameS));
     init_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
+    // seta o frame com o descritor do arquivo
     set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
+    // seta crc do descritor
     size_t tamanho = sizeof(frameS) - sizeof(frameS.crc);
     frameS.crc = gencrc((uint8_t *)&frameS, tamanho);
 
+    // envia descritor
     if (send(soquete, &frameS, sizeof(frameS), 0) == -1) {
         perror("Erro ao enviar o descritor do arquivo");
     }
 
+    // recebe reposta
     if (recv(soquete, &frameR, sizeof(frameR), 0) == -1) {
         perror("Erro ao receber o ACK do descritor");
     }
 
     if (frameR.tipo == TIPO_ACK) {
-        printf("ACK descritor recebido, enviar dados\n");
+        printf("Começando envio de dados...\n");
         enviar_arquivo(diretorio, nome_arquivo, soquete);
     } else if(frameR.tipo == TIPO_NACK){
         printf("ACK descritor recebido, enviar descritor novamente\n");
