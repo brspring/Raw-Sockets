@@ -7,38 +7,15 @@
 #include <net/if.h>
 #include <linux/if_packet.h>
 #include <dirent.h>
-
-#include "API-raw-socket.h"
-#include "frame.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
 
-unsigned int gencrc(const uint8_t *data, size_t size) {
-    unsigned int crc = 0xff; //CRC inicia com 0xff
-    size_t i, j;
-
-    for (i = 0; i < size; i++) {
-        crc ^= data[i]; // XOR CRC com os dados
-
-        for (j = 0; j < 8; j++) {
-            if (crc & 0x80) // se o bit mais significativo for 1
-                crc = (crc << 1) ^ 0x07; // desloca à esquerda + XOR com 0x07
-            else
-                crc <<= 1; //desloca à esquerda
-        }
-    }
-    return crc;
-}
-
-void set_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
-    frame->marcador_inicio = BIT_INICIO;
-    frame->sequencia = sequencia;
-    frame->tipo = tipo;
-    frame->tamanho = strlen(frame->data);
-}
+#include "API-raw-socket.h"
+#include "frame.h"
+#include "utils.h"
 
 // essa funcao so lista os arquivos, n sei como passa eles pelo frame kk
 void lista_arquivos(const char *diretorio, int soquete) {
@@ -64,7 +41,7 @@ void lista_arquivos(const char *diretorio, int soquete) {
             frameSend.data[nome_len + 1] = '\0';
             frameSend.tamanho = nome_len + 1;
 
-            set_frame(&frameSend, sequencia, TIPO_MOSTRA_NA_TELA);
+            init_frame(&frameSend, sequencia, TIPO_MOSTRA_NA_TELA);
             size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
             frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
 
@@ -93,9 +70,11 @@ void lista_arquivos(const char *diretorio, int soquete) {
             }
         }
     }
+
+    // fim do envio dos nomes
     memset(&frameSend, 0, sizeof(frameSend));
     memset(&frameRecv, 0, sizeof(frameRecv));
-    set_frame(&frameSend, sequencia, TIPO_FIM_TX);
+    init_frame(&frameSend, sequencia, TIPO_FIM_TX);
 
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
         perror("Erro ao enviar frame TIPO_FIM_TX");
@@ -107,7 +86,13 @@ void lista_arquivos(const char *diretorio, int soquete) {
         closedir(dir);
         return;
     }
-    printf("Lista de arquivos enviada com sucesso!\n");
+
+    // confirmacao de recebimento do fim_tx
+    if(frameRecv.tipo == TIPO_ACK) {
+        printf("Lista de arquivos enviada com sucesso!\n");
+    } else {
+        printf("Erro ao enviar a lista de arquivos\n");
+    }
 
     closedir(dir);
 }
@@ -187,7 +172,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
         // verificao para saber se pode envair um frame novo
         if (!frame_enviado) {
             memset(&frameRecv, 0, sizeof(frameRecv));
-            set_frame(&frameSend, sequencia, TIPO_DADOS);
+            init_frame(&frameSend, sequencia, TIPO_DADOS);
             frameSend.tamanho = bytes_lidos;
 
             preparar_dados(&frameSend);
@@ -225,7 +210,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
     }
 
     //frame fim tx
-    set_frame(&frameSend, sequencia, TIPO_FIM_TX);
+    init_frame(&frameSend, sequencia, TIPO_FIM_TX);
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
         perror("Erro ao enviar o frame de finalização");
     }
@@ -258,7 +243,7 @@ void enviar_descritor(const char *diretorio, char *nome_arquivo, int soquete) {
     frame_t frameS, frameR;
 
     memset(&frameS, 0, sizeof(frameS));
-    set_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
+    init_frame(&frameS, 0, TIPO_DESCRITOR_ARQUIVO);
     set_descritor_arquivo(diretorio, nome_arquivo, &frameS);
     size_t tamanho = sizeof(frameS) - sizeof(frameS.crc);
     frameS.crc = gencrc((uint8_t *)&frameS, tamanho);
@@ -300,24 +285,19 @@ int main() {
                 // recebeu tipo lista e vai confirmar isso pro cliente
                 uint8_t crc_recebido = frameR.crc;
                 frameR.crc = 0;
-                size_t tamanho_servidor = sizeof(frameR) - sizeof(frameR.crc);
-                uint8_t crc_calculado = gencrc((const uint8_t *)&frameR, tamanho_servidor);
+                uint8_t crc_calculado = gencrc((const uint8_t *)&frameR, sizeof(frameR) - sizeof(frameR.crc));
 
                 if (crc_recebido != crc_calculado) {
-                    set_frame(&frameS, 0, TIPO_NACK);
-                    send(soquete, &frameS, sizeof(frameS), 0);
-                    printf("servidor mandou NACK\n");
+                    envia_nack(soquete, &frameS);
                     break;
                 }else{
-                    set_frame(&frameS, 0, TIPO_ACK);
-                    send(soquete, &frameS, sizeof(frameS), 0);
-                    printf("servidor mandou ACK\n");
+                    envia_ack(soquete, &frameS);
                     lista_arquivos(diretorio, soquete);
                 }
                 break;
             case TIPO_ACK:
                 memset(&frameR, 0, sizeof(frameR));
-                set_frame(&frameR, 0, TIPO_ACK);
+                init_frame(&frameR, 0, TIPO_ACK);
                 break;
             case TIPO_BAIXAR:
                     uint8_t crc_recebido_baixar = frameR.crc;
@@ -329,7 +309,7 @@ int main() {
                     //se o arquivo passado existir, manda ACK
                     if((busca_arquivo_diretorio(diretorio, nome_arquivo) == 0) && (crc_recebido_baixar == crc_calculado_baixar)){
                         memset(&frameS, 0, sizeof(frameS));
-                        set_frame(&frameS, 0, TIPO_ACK);
+                        init_frame(&frameS, 0, TIPO_ACK);
                         send(soquete, &frameS, sizeof(frameS), 0);
                         printf("servidor mandou ACK\n");
 
@@ -337,7 +317,7 @@ int main() {
                         break;
                     }else{
                         memset(&frameS, 0, sizeof(frameS));
-                        set_frame(&frameS, 0, TIPO_ERRO);
+                        init_frame(&frameS, 0, TIPO_ERRO);
                         frameS.data[0] = NAO_ENCONTRADO;
                         frameS.data[1] = '\0';
                         send(soquete, &frameS, sizeof(frameS), 0);
@@ -348,10 +328,6 @@ int main() {
                 memset(&frameR, 0, sizeof(frameR));
                 break;
         }
-        /*fim:
-            memset(&frameS, 0, sizeof(frameS));
-            set_frame(&frameS, 0, TIPO_FIM_TX);
-            send(soquete, &frameS, sizeof(frameS), 0);*/
     }
     close(soquete);  // diz que a operacao terminou ver na imagem
     return 0;

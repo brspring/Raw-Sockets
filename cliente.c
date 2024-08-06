@@ -14,25 +14,9 @@
 
 #include "API-raw-socket.h"
 #include "frame.h"
+#include "utils.h"
 
 #define BUFFER_SIZE 1024
-
-unsigned int gencrc(const uint8_t *data, size_t size) {
-    unsigned int crc = 0xff; // Inicializa o CRC com 0xff
-    size_t i, j;
-
-    for (i = 0; i < size; i++) {
-        crc ^= data[i]; // XOR o CRC com o byte de dados atual
-
-        for (j = 0; j < 8; j++) {
-            if (crc & 0x80) // se o bit mais significativo for 1
-                crc = (crc << 1) ^ 0x07; // desloca à esquerda e XOR com 0x07
-            else
-                crc <<= 1; //desloca à esquerda
-        }
-    }
-    return crc;
-}
 
 void processar_dados(frame_t *frame) {
     size_t new_len = 0;
@@ -71,20 +55,14 @@ int recv_with_timeout(int socket, frame_t *frame, int timeout_sec) {
     //(recv_with_timeout(soquete, &frameRecv, 5) == -1)
 }
 
-void init_frame(frame_t *frame, unsigned int sequencia, unsigned int tipo) {
-    frame->marcador_inicio = BIT_INICIO;
-    frame->sequencia = sequencia;
-    frame->tipo = tipo;
-    frame->tamanho = strlen(frame->data);
-    //frame->crc = gencrc((uint8_t *)frame, sizeof(frame_t) - sizeof(frame->crc));
-}
-
 void MenuCliente(){
-    printf("-------------------\n");
+    printf("-----------------------------\n");
     printf("Cliente Iniciado\n");
     printf(" 1 - Listar arquivos\n");
     printf(" 2 - Baixar Arquivo\n");
     printf(" 3 - Sair\n");
+    printf("-----------------------------\n");
+    printf("Seu comando: ");
 }
 
 void lista(int soquete){
@@ -94,20 +72,22 @@ void lista(int soquete){
 
     nack_msg:
 
+    //inicializa o frame tipo lista
     init_frame(&frameSend, 0, TIPO_LISTA);
-
     size_t tamanho_cliente = sizeof(frameSend) - sizeof(frameSend.crc);
     frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente);
 
-    printf("Filmes disponíveis:\n");
-    //envia o tipo lista
+    //envia o tipo lista para o servidor
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
     {
         perror("Erro ao enviar mensagem! \n");
     }
 
+    printf("Filmes disponíveis:\n");
+
     // esperando resposta do servidor
     while(1){
+        // faz controle por timeout
         if ((recv_with_timeout(soquete, &frameRecv, 5) == -1)) {
             perror("Erro ao receber mensagem!");
             return;
@@ -129,34 +109,17 @@ void lista(int soquete){
 
                 // compara o CRC e a sequencia da msg, para enviar ack ou nack
                 if (frameRecv.sequencia == (sequencia_esperada % 32) && crc_recebido == crc_calculado) {
+                    // printa o nome dos filme recebido
                     printf("- %s",frameRecv.data);
-                    //printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
-
-                    memset(&frameSend, 0, sizeof(frameSend));
-                    init_frame(&frameSend, 0, TIPO_ACK);
-                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
-                        perror("Erro ao enviar mensagem\n");
-                        break;
-                    }
+                    envia_ack(soquete, &frameSend);
                     sequencia_esperada++;
                 } else {
                     //se recebe um frame fora de ordem ou com crc errado, envia NACK
-                    printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
-                    memset(&frameSend, 0, sizeof(frameSend));
-                    init_frame(&frameSend, 0, TIPO_NACK);
-                    if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
-                        perror("Erro ao enviar NACK\n");
-                        break;
-                    }
+                    envia_nack(soquete, &frameSend);
                 }
                 break;
             case TIPO_FIM_TX:
-                memset(&frameSend, 0, sizeof(frameSend));
-                init_frame(&frameSend, 0, TIPO_ACK);
-                if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
-                    perror("Erro ao enviar mensagem\n");
-                    break;
-                }
+                envia_ack(soquete, &frameSend);
                 return;
         }
     }
@@ -322,6 +285,7 @@ void baixar(int soquete, char* nome_arquivo){
 }
 
 int main(int argc, char **argv) {
+    //conexao raw socket
     int soquete = cria_raw_socket("eno1"); //note: enp2s0 pc: eno1
     if (soquete == -1) {
         perror("Erro ao criar socket");
@@ -344,6 +308,7 @@ int main(int argc, char **argv) {
                 } else {
                     printf("Mande o nome do filme após o número da operação.\n");
                 }
+            //opcao 1 de listar os arquivos "01010"
             } else if (strcmp(arg, "1") == 0) {
                 lista(soquete);
             } else if (strcmp(arg, "3") == 0) {
