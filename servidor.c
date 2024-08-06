@@ -211,7 +211,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
             }
             memset(&frameSend, 0, sizeof(frameSend));
         } else {
-            if (frameRecv.tipo == TIPO_NACK || frameRecv.tipo == TIPO_ERRO) {
+            if (frameRecv.tipo == TIPO_NACK) {
                 printf("Recebido NACK ou ERRO, reenviando frame...\n");
                 continue;
             }
