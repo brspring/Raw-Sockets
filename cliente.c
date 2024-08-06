@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <string.h>
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <linux/if_packet.h>
+#include <pwd.h>
 
 #include "API-raw-socket.h"
 #include "frame.h"
@@ -160,22 +162,59 @@ void lista(int soquete){
     }
 }
 
+void open_with_celluloid(const char *output_filename) {
+    if (chmod(output_filename, 0666) != 0) {
+        perror("Erro ao ajustar permissões do arquivo");
+        exit(EXIT_FAILURE);
+    }
+
+    char *logged_user = getlogin();
+    if (logged_user == NULL) {
+        perror("Failed to get login name");
+        exit(EXIT_FAILURE);
+    }
+
+    struct passwd *pwd = getpwnam(logged_user);
+    if (pwd == NULL) {
+        perror("Failed to get user information");
+        exit(EXIT_FAILURE);
+    }
+
+    uid_t uid = pwd->pw_uid;
+    gid_t gid = pwd->pw_gid;
+
+    if (chown(output_filename, uid, gid) != 0) {
+        perror("Failed to change file ownership");
+        exit(EXIT_FAILURE);
+    }
+
+    char command[256];
+    snprintf(command, sizeof(command), "sudo -u %s celluloid %s", logged_user, output_filename);
+
+    int result = system(command);
+    if (result == -1) {
+        fprintf(stderr, "Error executing system command\n");
+    } else {
+        printf("Celluloid player opened successfully\n");
+    }
+}
+
 void baixar(int soquete, char* nome_arquivo){
+    // char caminho_arquivo[256];
     frame_t frameSend, frameRecv;
     char *separador;
     char buffer_tamanho[256];
-    char data[256];
+    char data[50];
     int sequencia_esperada = 0;
 
     FILE *arquivo = NULL;
 
+    //snprintf(caminho_arquivo, sizeof(caminho_arquivo), "./%s", nome_arquivo);
+
     init_frame(&frameSend, 0, TIPO_BAIXAR);
     strcpy(frameSend.data, nome_arquivo); //manda o nome do arquivo em 1 frame, pq ele n pode ter mais de 63 bytes
-
     size_t tamanho_cliente_baixar = sizeof(frameSend) - sizeof(frameSend.crc);
-    printf("Tamanho dos dados para CRC no servidor: %zu\n", tamanho_cliente_baixar);
     frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_cliente_baixar);
-    printf("CRC : %d\n", frameSend.crc);
 
     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1)
     {
@@ -183,7 +222,9 @@ void baixar(int soquete, char* nome_arquivo){
     }
 
     while(1){
-        recv(soquete, &frameRecv, sizeof(frameRecv), 0);
+        if (recv(soquete, &frameRecv, sizeof(frameRecv), 0) == -1) {
+            perror("Erro ao receber o ACK do descritor");
+        }
 
         switch(frameRecv.tipo) {
             case TIPO_ACK:
@@ -226,6 +267,8 @@ void baixar(int soquete, char* nome_arquivo){
                     }
                     break;
                 } else {
+                    printf("crc recebido: %d\n", crc_recebido_desc);
+                    printf("crc calculado: %d\n", crc_calculado_desc);
                     memset(&frameSend, 0, sizeof(frameSend));
                     init_frame(&frameSend, 0, TIPO_NACK);
                     if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
@@ -233,16 +276,13 @@ void baixar(int soquete, char* nome_arquivo){
                         break;
                     }
                 }
-            case TIPO_ERRO:
-                printf("Erro ao encontrar o arquivo: %s\n", frameRecv.data);
-                break;
             case TIPO_DADOS:
                 //compara o que recebeu com o mod de 32 para nao passar de 5 bits
                 uint8_t crc_recebido_dados = frameRecv.crc;
                 frameRecv.crc = 0;
                 uint8_t crc_calculado_dados = gencrc((const uint8_t *)&frameRecv, sizeof(frameRecv) - sizeof(frameRecv.crc));
 
-                if (frameRecv.sequencia == sequencia_esperada && crc_calculado_dados == crc_recebido_dados) {
+                if (crc_calculado_dados == crc_recebido_dados) {
                         processar_dados(&frameRecv);
                         fwrite(frameRecv.data, 1, frameRecv.tamanho, arquivo);
                         printf("Recebendo o frame de sequencia: %u e tamanho %u\n", frameRecv.sequencia, frameRecv.tamanho);
@@ -259,7 +299,8 @@ void baixar(int soquete, char* nome_arquivo){
                         }
                     } else {
                         //se recebe u   m frame fora de ordem, envia NACK
-                        printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
+                        //printf("Frame fora de ordem. Esperado: %u, Recebido: %u\n", sequencia_esperada, frameRecv.sequencia);
+                        printf("CRC ERRADOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
                         memset(&frameSend, 0, sizeof(frameSend));
                         init_frame(&frameSend, 0, TIPO_NACK);
                         if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
@@ -271,6 +312,7 @@ void baixar(int soquete, char* nome_arquivo){
                 case TIPO_FIM_TX:
                     printf("Recebimento de dados concluído.\n");
                     if (arquivo != NULL){
+                        //open_with_celluloid(caminho_arquivo);
                         fclose(arquivo);
                     }
                     return;

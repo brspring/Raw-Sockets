@@ -174,6 +174,7 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
     int file;
     ssize_t bytes_lidos;
     unsigned int sequencia = 0;
+    int frame_enviado = 0;
 
     snprintf(caminho_arquivo, sizeof(caminho_arquivo), "%s/%s", diretorio, nome_arquivo);
     file = open(caminho_arquivo, O_RDONLY);
@@ -183,14 +184,19 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
     }
 
     while ((bytes_lidos = read(file, frameSend.data, MAX_DATA_SIZE)) > 0) {
-        memset(&frameRecv, 0, sizeof(frameRecv));
-        set_frame(&frameSend, sequencia, TIPO_DADOS);
-        frameSend.tamanho = bytes_lidos;
+        // verificao para saber se pode envair um frame novo
+        if (!frame_enviado) {
+            memset(&frameRecv, 0, sizeof(frameRecv));
+            set_frame(&frameSend, sequencia, TIPO_DADOS);
+            frameSend.tamanho = bytes_lidos;
 
-        preparar_dados(&frameSend);
+            preparar_dados(&frameSend);
 
-        size_t tamanho_servidor = sizeof(frameSend) - sizeof(frameSend.crc);
-        frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_servidor);
+            size_t tamanho_servidor = sizeof(frameSend) - sizeof(frameSend.crc);
+            frameSend.crc = gencrc((uint8_t *)&frameSend, tamanho_servidor);
+
+            frame_enviado = 1;
+        }
 
         if (send(soquete, &frameSend, sizeof(frameSend), 0) == -1) {
             perror("Erro ao enviar o frame");
@@ -210,10 +216,10 @@ void enviar_arquivo(const char *diretorio, char *nome_arquivo, int soquete) {
                 sequencia = 0;
             }
             memset(&frameSend, 0, sizeof(frameSend));
+            frame_enviado = 0;
         } else {
             if (frameRecv.tipo == TIPO_NACK) {
-                printf("Recebido NACK ou ERRO, reenviando frame...\n");
-                continue;
+                printf("Recebido NACK, reenviando frame...\n");
             }
         }
     }
